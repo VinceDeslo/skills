@@ -39,10 +39,16 @@ and reads from that listing:
 - `repo.default_branch` — the branch to refresh, so `main` and `master` repos both work.
 - `items[].worktree.main` — the repository's main worktree. Used as the repository identity, which collapses the `repo.branch` worktree siblings in the root into one entry per repository. A non-git directory makes `wt list` exit non-zero and is skipped.
 - the item whose `branch` equals the default branch — the worktree the fast-forward lands in, so the pull is correct even when the main worktree sits on a feature branch.
-- `upstream.remote`, `upstream.branch`, `upstream.ahead`, `upstream.behind` — the fast-forward decision.
+- `upstream.remote` — whether the default branch tracks anything at all.
 - `worktree.changes` — reported as `dirty` next to the result.
 
-Worktrunk exposes no fetch or pull command, so the two remote operations use git directly in the worktree worktrunk selected: `git fetch --prune`, then `git merge --ff-only <remote>/<branch>` when `behind > 0` and `ahead == 0`. The listing is re-read after the fetch to get fresh divergence counts.
+Worktrunk exposes no fetch or pull command, so the update itself is one git command in the worktree worktrunk selected:
+
+```bash
+git -C <target> pull --ff-only --prune
+```
+
+`--ff-only` is what makes this safe to run unattended: the branch either fast-forwards or the pull refuses, so no merge commit and no rebase can appear behind your back. `--prune` drops remote-tracking refs for branches deleted on the forge, which otherwise accumulate for years. Nothing here needs a separate fetch — pull fetches first. `upstream.ahead` and `upstream.behind` are read from a second listing only when the pull fails, to say how far the branch diverged.
 
 Results per repository: `updated`, `up-to-date`, `skipped`, or `failed`. Exit status is non-zero if any repository failed.
 
@@ -57,8 +63,8 @@ Results per repository: `updated`, `up-to-date`, `skipped`, or `failed`. Exit st
 
 ## Edge cases
 
-- **Diverged default branch:** reported `failed` with the ahead and behind counts. No merge is attempted. The user decides whether to rebase or reset.
-- **Dirty worktree:** the fast-forward is still attempted. Git refuses it when local changes would be overwritten, which surfaces as `failed`.
+- **Diverged default branch:** `--ff-only` refuses and the repository is reported `failed` with the ahead and behind counts. The user decides whether to rebase or reset.
+- **Dirty worktree:** the pull is still attempted, and succeeds whenever the incoming commits do not touch the modified files. Otherwise git refuses and the repository is reported `failed` with the local changes named.
 - **No upstream for the default branch:** reported `skipped`, nothing is changed.
 - **Empty repository (no commits):** reported `skipped` with `no commits`.
 - **Default branch checked out in no worktree:** reported `skipped`. Create one with `wts <default-branch>` and run again.

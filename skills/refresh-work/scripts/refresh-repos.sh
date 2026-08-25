@@ -26,16 +26,19 @@ DEFAULT_BRANCH_ROW='
         ($target.worktree.path // ""),
         (if $target.head == null then "no" else "yes" end),
         ($target.upstream.remote // ""),
-        ($target.upstream.branch // ""),
         ($target.upstream.ahead // 0),
         ($target.upstream.behind // 0),
         ($target.head.short_sha // ""),
-        (if ($target.worktree.changes // {} | to_entries | map(select(.key != "diff") | .value) | any) then "dirty" else "clean" end)
+        (if ($target.worktree.changes // {} | to_entries | map(select(.key != "diff") | .value) | any) then "dirty" else "" end)
       ]
-    | @tsv
+    | .[]
 '
 
 report() { printf '%-38s %-22s %-12s %s\n' "$1" "$2" "$3" "$4"; }
+
+first_error_line() {
+    printf '%s\n' "$1" | grep -m1 -E '^(fatal|error):' || printf '%s\n' "$1" | grep -v '^[[:space:]]*$' | tail -1
+}
 
 updated=0
 current=0
@@ -51,8 +54,18 @@ for candidate in "$root"/*; do
     listing=$(worktrunk_list "$candidate") || continue
     [ -n "$listing" ] || continue
 
-    row=$(printf '%s' "$listing" | jq -r "$DEFAULT_BRANCH_ROW" 2>/dev/null) || continue
-    IFS=$'\t' read -r repo_key default_branch target has_head _ _ _ _ _ _ <<<"$row"
+    fields=$(printf '%s' "$listing" | jq -r "$DEFAULT_BRANCH_ROW" 2>/dev/null) || continue
+    {
+        read -r repo_key
+        read -r default_branch
+        read -r target
+        read -r has_head
+        read -r remote
+        read -r ahead
+        read -r behind
+        read -r before
+        read -r dirty
+    } <<<"$fields"
     [ -n "$repo_key" ] || continue
 
     repo_id=$(printf '%s' "$repo_key" | tr '[:upper:]' '[:lower:]')
@@ -68,25 +81,15 @@ for candidate in "$root"/*; do
         continue
     fi
 
+    location=""
+    [ "$target" = "$repo_key" ] || location=" in $(basename "$target")"
+    suffix="${dirty:+ $dirty}$location"
+
     if [ "$has_head" = "no" ]; then
         report "$name" "$default_branch" "skipped" "no commits"
         skipped=$((skipped + 1))
         continue
     fi
-
-    if ! fetch_error=$(git -C "$target" fetch --prune 2>&1 >/dev/null); then
-        report "$name" "$default_branch" "failed" "fetch: $(printf '%s' "$fetch_error" | tail -1)"
-        failed=$((failed + 1))
-        continue
-    fi
-
-    row=$(worktrunk_list "$target" | jq -r "$DEFAULT_BRANCH_ROW")
-    IFS=$'\t' read -r _ _ _ _ remote remote_branch ahead behind short_sha worktree_state <<<"$row"
-
-    location=""
-    [ "$target" = "$repo_key" ] || location=" in $(basename "$target")"
-    suffix="$location"
-    [ "$worktree_state" = "clean" ] || suffix=" $worktree_state$location"
 
     if [ -z "$remote" ]; then
         report "$name" "$default_branch" "skipped" "no upstream$suffix"
@@ -94,26 +97,22 @@ for candidate in "$root"/*; do
         continue
     fi
 
-    if [ "$behind" -eq 0 ]; then
-        report "$name" "$default_branch" "up-to-date" "$short_sha$suffix"
-        current=$((current + 1))
-        continue
-    fi
-
-    if [ "$ahead" -gt 0 ]; then
-        report "$name" "$default_branch" "failed" "diverged: ahead $ahead, behind $behind$suffix"
-        failed=$((failed + 1))
-        continue
-    fi
-
-    if ! merge_error=$(git -C "$target" merge --ff-only "$remote/$remote_branch" 2>&1 >/dev/null); then
-        report "$name" "$default_branch" "failed" "$(printf '%s' "$merge_error" | tail -1)"
+    if ! pull_error=$(git -C "$target" pull --ff-only --prune 2>&1 >/dev/null); then
+        { read -r ahead; read -r behind; } <<<"$(worktrunk_list "$target" | jq -r "$DEFAULT_BRANCH_ROW" | sed -n '6p;7p')"
+        report "$name" "$default_branch" "failed" "ahead $ahead, behind $behind$suffix: $(first_error_line "$pull_error")"
         failed=$((failed + 1))
         continue
     fi
 
     after=$(git -C "$target" rev-parse --short HEAD)
-    report "$name" "$default_branch" "updated" "$short_sha -> $after (+$behind)$suffix"
+
+    if [ "$before" = "$after" ]; then
+        report "$name" "$default_branch" "up-to-date" "$after$suffix"
+        current=$((current + 1))
+        continue
+    fi
+
+    report "$name" "$default_branch" "updated" "$before -> $after$suffix"
     updated=$((updated + 1))
 done
 
