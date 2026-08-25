@@ -35,7 +35,7 @@ The user asks to sync, save, commit, or push their notes / brain repo / vault, o
 4. Run the sync:
 
    ```bash
-   cd ~/repos/personal/brain && git add -A && git commit -m "notes $(date +%F)" && git push
+   cd ~/repos/personal/brain && git add -A && git commit -m "brainsync $(date +%F)" && git push
    ```
 
 5. Report the resulting commit hash and the push result:
@@ -49,7 +49,7 @@ The user asks to sync, save, commit, or push their notes / brain repo / vault, o
 
 - `brainsync` is an interactive shell alias for the command in step 4. Non-interactive agent shells do not load it, so run the full command instead of the alias name.
 - The alias takes no arguments. Any argument passed to it is appended to `git push` — for example `brainsync --help` still commits, then prints the `git push` man page. Never invoke it to probe for usage.
-- Commit message format is fixed: `notes YYYY-MM-DD`.
+- Commit message format is fixed: `brainsync YYYY-MM-DD`.
 
 ## Edge cases
 
