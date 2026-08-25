@@ -1,16 +1,16 @@
 ---
-name: brainsync
-description: Commit and push the personal notes vault at ~/repos/personal/brain with a dated commit message. Use when asked to sync, save, commit, or push notes, the brain repo, or the second brain vault, or when the user says "brainsync".
+name: brain-sync
+description: Commit and push the personal notes vault at ~/repos/personal/brain with a dated commit message. Use when asked to sync, save, commit, or push notes, the brain repo, or the second brain vault, or when the user says "brain-sync" or "brainsync".
 compatibility: Requires git and a local clone of the notes vault at ~/repos/personal/brain with a configured remote and push credentials.
 ---
 
-# brainsync
+# brain-sync
 
 Sync the personal notes vault: stage everything, commit with a dated message, push.
 
 ## When to use
 
-The user asks to sync, save, commit, or push their notes / brain repo / vault, or says "brainsync".
+The user asks to sync, save, commit, or push their notes / brain repo / vault, or says "brain-sync" or "brainsync".
 
 ## Instructions
 

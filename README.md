@@ -15,7 +15,7 @@ skills add vincedeslo/skills -s <skill-name> -a claude-code -y   # one skill, on
 
 | Skill | Description |
 | --- | --- |
-| [brainsync](skills/brainsync/SKILL.md) | Commit and push the personal notes vault at `~/repos/personal/brain` with a dated commit message |
+| [brain-sync](skills/brain-sync/SKILL.md) | Commit and push the personal notes vault at `~/repos/personal/brain` with a dated commit message |
 | [new-skill](skills/new-skill/SKILL.md) | Bootstrap a new skill in this catalog — scaffolding, spec-compliant frontmatter, validation, and commit conventions |
 | [refresh-repos](skills/refresh-repos/SKILL.md) | Fast-forward the default branch of every repository under `~/repos/personal` and `~/repos/work`, discovering them with worktrunk |
 
