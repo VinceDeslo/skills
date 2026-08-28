@@ -1,6 +1,6 @@
 ---
 name: feature
-description: Start a feature from a Linear ticket — read the ticket, create a worktree for the current repository named after the ticket identifier, and scaffold the implementation locally, stopping at a reviewable state without committing or pushing. Use when given a Linear issue link or identifier (ENG-123) and asked to start, implement, build, or scaffold the work, or when the user says "feature".
+description: Start a feature from a Linear ticket — read the ticket, create a worktree for the current repository on a <ticket-id>-<slug> branch, and scaffold the implementation locally, stopping at a reviewable state without committing or pushing. Use when given a Linear issue link or identifier (ENG-123) and asked to start, implement, build, or scaffold the work, or when the user says "feature".
 compatibility: Run from inside a git repository. Requires bash, git, worktrunk (`wt`, https://worktrunk.dev), and jq. Reading the ticket needs a Linear integration (an MCP server, the `linear` CLI, or a browser fetch); without one, ask the user to paste the ticket body.
 ---
 
@@ -33,7 +33,18 @@ From the repository the user is working in:
 scripts/create-feature-worktree.sh <linear-url-or-id> "<short slug from the ticket title>"
 ```
 
-It prints `id=`, `branch=`, `path=`, and `created=`. The branch is `<lowercased-id>[-slug]` (`eng-123-add-cost-guardrails`), so every branch and worktree carries the ticket identifier. Re-running with the same input reuses the existing worktree and reports `created=false`.
+Both arguments are mandatory. The branch is always `<lowercased-id>-<slug>` — `eng-123-add-cost-guardrails` — never the bare identifier, so every branch and worktree names both the ticket and what it does. Derive the slug from the ticket title; the script lowercases it, collapses everything non-alphanumeric to hyphens, and trims it to 40 characters.
+
+The script prints `id=`, `branch=`, `base=`, `path=`, and `created=`.
+
+**The base branch follows the worktree the command runs in:**
+
+- On the default branch — the new branch is cut from the default branch.
+- On any other branch — the new branch is cut from **that** branch, so a feature started from inside a feature worktree stacks on top of the work already there instead of losing it.
+
+The script reads the current branch and `repo.default_branch` from `wt list` and passes the result as `wt switch --base`. Check the printed `base=` before writing code: if it stacked on a branch the ticket does not depend on, stop and ask the user rather than building on the wrong parent.
+
+Re-running with the same input reuses the existing worktree, reports `created=false`, and prints `base=-` since nothing was branched.
 
 Do all subsequent work in the printed `path=`. Nothing is written to the original worktree.
 
@@ -92,7 +103,10 @@ Then state the manual path: what to click, curl, or invoke; the input to supply;
 
 - **No identifier in the input:** the script exits non-zero. Ask for the full ticket link or the `ABC-123` identifier.
 - **Ticket unreadable (no integration, private workspace):** ask the user to paste the ticket body rather than guessing the scope from the URL slug.
+- **No slug given:** the script exits with usage. The slug is not optional — take it from the ticket title.
 - **Branch or worktree already exists:** reused, `created=false`. Continue in it and tell the user it was pre-existing, since it may hold earlier work.
-- **Uncommitted changes in the current worktree:** they stay where they are. The new worktree branches from the default branch, so unstaged work is not carried over — mention it if the feature depends on it.
+- **Started from a feature worktree:** the new branch stacks on that branch, and only its committed history comes along. Say so in the summary — the eventual pull request will target that parent, not the default branch.
+- **Uncommitted changes in the current worktree:** they stay where they are. Only committed work reaches the new branch, whichever base was chosen — mention it if the feature depends on those changes.
+- **Detached HEAD in the current worktree:** there is no current branch to stack on, so the default branch is used as the base.
 - **Ticket too large for one branch:** scaffold the coherent first slice, and list the remaining slices in the summary instead of half-implementing all of them.
 - **`wt` or `jq` missing:** hard requirement; the script exits before touching the repository.
