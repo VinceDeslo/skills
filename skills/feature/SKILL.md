@@ -1,7 +1,7 @@
 ---
 name: feature
-description: Start a feature from a Linear ticket — read the ticket, create a worktree for the current repository on a <ticket-id>-<slug> branch, and scaffold the implementation locally, stopping at a reviewable state without committing or pushing. Use when given a Linear issue link or identifier (ENG-123) and asked to start, implement, build, or scaffold the work, or when the user says "feature".
-compatibility: Run from inside a git repository. Requires bash, git, worktrunk (`wt`, https://worktrunk.dev), and jq. Reading the ticket needs a Linear integration (an MCP server, the `linear` CLI, or a browser fetch); without one, ask the user to paste the ticket body.
+description: Start a feature from a Linear ticket — read the ticket, create a worktree for the current repository on a <ticket-id>-<slug> branch, and scaffold the implementation locally, stopping at a reviewable state without committing or pushing. Use when given a Linear issue link or identifier (ENG-123) and asked to start, implement, build, or scaffold the work.
+compatibility: Run from inside a git repository. Requires bash, git, worktrunk (`wt`, https://worktrunk.dev), and jq. Reading the ticket needs either a connected Linear MCP server or a Linear API key in the environment for the GraphQL API — Linear has no CLI; without either, ask the user to paste the ticket body.
 ---
 
 # feature
@@ -16,12 +16,19 @@ The user supplies a Linear issue link (`https://linear.app/<workspace>/issue/ENG
 
 ### 1. Read the ticket
 
-Extract the identifier — the `ABC-123` segment of the URL — and fetch the issue. In order of preference:
+Extract the identifier — the `ABC-123` segment of the URL — and fetch the issue. Linear ships no CLI, so there are two ways in:
 
-- a Linear MCP tool (`get_issue` with the identifier),
-- the `linear` CLI,
-- a plain fetch of the URL,
-- as a last resort, ask the user to paste the title, description, and acceptance criteria.
+- **A Linear MCP server** — `get_issue` with the identifier. Preferred; use it whenever one is connected.
+- **The GraphQL API** — `https://api.linear.app/graphql`, authenticated with a personal API key from the environment (`LINEAR_API_KEY`) or a credential store. Never prompt for a key or paste one into a command.
+
+  ```bash
+  curl -sS https://api.linear.app/graphql \
+    -H "Authorization: $LINEAR_API_KEY" \
+    -H 'Content-Type: application/json' \
+    -d '{"query":"query($id:String!){issue(id:$id){identifier title description url state{name} comments{nodes{body}}}}","variables":{"id":"ABC-123"}}'
+  ```
+
+Fetching the issue URL without credentials does not work — Linear serves a client-side app behind a login, so the response carries no ticket content. If neither route is available, ask the user to paste the title, description, and acceptance criteria, and say why.
 
 Pull out: title, description, acceptance criteria, linked designs or documents, and any comments that change the requirements. If the ticket is thin, ask the user the questions the ticket leaves open **before** writing code — do not invent requirements.
 
@@ -102,7 +109,7 @@ Then state the manual path: what to click, curl, or invoke; the input to supply;
 ## Edge cases
 
 - **No identifier in the input:** the script exits non-zero. Ask for the full ticket link or the `ABC-123` identifier.
-- **Ticket unreadable (no integration, private workspace):** ask the user to paste the ticket body rather than guessing the scope from the URL slug.
+- **Ticket unreadable (no MCP server, no API key, wrong workspace):** ask the user to paste the ticket body rather than guessing the scope from the URL slug.
 - **No slug given:** the script exits with usage. The slug is not optional — take it from the ticket title.
 - **Branch or worktree already exists:** reused, `created=false`. Continue in it and tell the user it was pre-existing, since it may hold earlier work.
 - **Started from a feature worktree:** the new branch stacks on that branch, and only its committed history comes along. Say so in the summary — the eventual pull request will target that parent, not the default branch.
