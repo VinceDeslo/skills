@@ -21,6 +21,7 @@ skills add vincedeslo/skills -s <skill-name> -a claude-code -y   # one skill, on
 | [new-skill](skills/new-skill/SKILL.md) | Bootstrap a new skill in this catalog — scaffolding, spec-compliant frontmatter, validation, and commit conventions |
 | [refresh-repos](skills/refresh-repos/SKILL.md) | Fast-forward the default branch of every repository under `~/repos/personal` and `~/repos/work`, discovering them with worktrunk |
 | [service-scorecard](skills/service-scorecard/SKILL.md) | Audit a service repo and produce a shareable HTML report card grading it A–F across 23 facets, each with the top 3 paths to improvement |
+| [stage-split](skills/stage-split/SKILL.md) | Split the currently staged changes into focused Conventional Commits, proposed as a table for approval before anything is committed |
 
 ## Adding a skill
 
