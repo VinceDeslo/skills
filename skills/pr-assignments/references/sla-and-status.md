@@ -3,6 +3,30 @@
 Reference for the priority math and the status vocabulary. Read this before ranking or filling the
 template.
 
+## The window
+
+Only PRs whose review clock started inside the window are in the queue at all — 14 days by default.
+The fetch enforces it twice: `updated:>=<cutoff>` at the search level (a review request bumps
+`updatedAt`, so this is a safe superset), then a hard drop on `clock.requestedAt` in the normalizer.
+
+A request older than the window is a stale-PR problem, not a queue item. Widen the window only on
+request, and say which window produced the report.
+
+## Origin: direct vs. team
+
+`origin` decides the section, and it outranks the clock: a direct request inside its budget still
+sorts above an overdue team request.
+
+- **`direct`** — the user is a pending reviewer by name, or the latest matching
+  `ReviewRequestedEvent` named them. Nobody else can absorb it.
+- **`team`** — the request names a team the user belongs to, listed in `originTeams`. Any teammate
+  can take it.
+- **`unattributed`** — neither resolved. Goes in the team section, with the ambiguity stated in the
+  signals line.
+
+The current `reviewRequests` list is checked before the timeline: a re-request that replaced a team
+request with a direct one should read as `direct`, and only the live state shows that.
+
 ## The review clock
 
 GitHub pull requests have no due date, so the skill derives one. The clock starts when the review
@@ -36,9 +60,9 @@ timezone.
 | 1 | due tomorrow | `DUE TOMORROW` | `lane-due` |
 | ≥ 2 | in budget | `2D LEFT` | `lane-ok` |
 
-Ranking within "Awaiting your review" is slack ascending — the most negative first. Break ties, in
-order, by: CI failing before CI green (a red PR needs the author sooner), then larger `changedFiles`
-first, then older `createdAt`.
+Ranking **within a section** is slack ascending — the most negative first. Break ties, in order, by:
+CI failing before CI green (a red PR needs the author sooner), then larger `changedFiles` first,
+then older `createdAt`. Slack never moves a PR across the direct/team boundary.
 
 Draft PRs always sort last in their section regardless of slack, and carry a `draft` badge. Their
 clock is real but nobody is blocked on a draft.
@@ -49,15 +73,15 @@ From `myReview` and `lastCommitAt`:
 
 | Condition | `REVIEW_LABEL` | Badge class | Section |
 | --- | --- | --- | --- |
-| `myReview` is null | `NOT REVIEWED` | `rev-none` | Awaiting your review |
-| `myReview.latestState` is `APPROVED` or `CHANGES_REQUESTED`, and `lastCommitAt` > `myReview.latestAt` | `RE-REVIEW: NEW COMMITS` | `rev-stale` | Awaiting your review |
-| `myReview.latestState` is `COMMENTED` only | `COMMENTED, NOT SIGNED OFF` | `rev-stale` | Awaiting your review |
+| `myReview` is null | `NOT REVIEWED` | `rev-none` | direct or team, by `origin` |
+| `myReview.latestState` is `APPROVED` or `CHANGES_REQUESTED`, and `lastCommitAt` > `myReview.latestAt` | `RE-REVIEW: NEW COMMITS` | `rev-stale` | direct or team, by `origin` |
+| `myReview.latestState` is `COMMENTED` only | `COMMENTED, NOT SIGNED OFF` | `rev-stale` | direct or team, by `origin` |
 | `myReview.latestState` is `APPROVED`, no commits since | `APPROVED BY YOU` | `rev-done` | Already reviewed by you |
 | `myReview.latestState` is `CHANGES_REQUESTED`, no commits since | `CHANGES REQUESTED BY YOU` | `rev-done` | Already reviewed by you |
 
 A PR that reached the fetch output while `myReview` is non-null and `stillRequested` is true was
-re-requested — that is exactly the `RE-REVIEW` case, and it belongs in the top section with a live
-clock.
+re-requested — that is exactly the `RE-REVIEW` case, and it belongs in its origin's section with a
+live clock, not in "Already reviewed by you".
 
 ## CI status
 
@@ -86,7 +110,10 @@ output supports. Candidates, most useful first:
 
 - Author is a bot (`dependabot[bot]`, `renovate[bot]`) and the PR is a dependency bump — say so, it
   changes how much reading it needs.
-- The clock source was `pr-opened` or `team-request` rather than a direct request.
+- The clock source was `pr-opened` or `ready-for-review` rather than an actual request event, which
+  makes the position weaker than it looks.
+- `origin` is `unattributed`, or the origin disagrees with `clock.source` — a team request later
+  narrowed to a direct one, say.
 - `reviewDecision` is `APPROVED` already — someone else signed off, so the user's review may be
   redundant.
 - Unresolved review threads outnumber resolved ones.

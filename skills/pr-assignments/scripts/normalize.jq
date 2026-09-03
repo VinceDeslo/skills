@@ -12,6 +12,17 @@ def ctxstate: (.conclusion // .status // .state // "UNKNOWN");
 | ([$pr.reviews.nodes[] | select(.author.login == $me)] | sort_by(.submittedAt)) as $mine
 | (($pr.commits.nodes[0].commit.statusCheckRollup) // null) as $roll
 | (($roll.contexts.nodes) // []) as $ctx
+| ([$pr.reviewRequests.nodes[] | name]) as $pending
+| (($pending | index($me)) != null) as $pendingMe
+| ([$pending[] | select(IN($teams[]))]) as $pendingTeams
+| (if $pendingMe then "direct"
+   elif ($pendingTeams | length) > 0 then "team"
+   elif $direct then "direct"
+   elif $viaTeam then "team"
+   else "unattributed" end) as $origin
+| ($direct.createdAt // $viaTeam.createdAt // $ready.createdAt // $pr.createdAt) as $requestedAt
+# Drop anything whose review clock started before the window.
+| select($requestedAt >= ($cutoff + "T00:00:00Z"))
 | {
   repo: $repoFull,
   number: $pr.number,
@@ -27,14 +38,16 @@ def ctxstate: (.conclusion // .status // .state // "UNKNOWN");
   branches: { base: $pr.baseRefName, head: $pr.headRefName },
   labels: [$pr.labels.nodes[].name],
   body: ($pr.body | trunc(1500)),
+  origin: $origin,
+  originTeams: $pendingTeams,
   clock: {
-    requestedAt: ($direct.createdAt // $viaTeam.createdAt // $ready.createdAt // $pr.createdAt),
+    requestedAt: $requestedAt,
     source: (if $direct then "direct-request"
              elif $viaTeam then ("team-request:" + ($viaTeam | name))
              elif $ready then "ready-for-review"
              else "pr-opened" end)
   },
-  stillRequested: [$pr.reviewRequests.nodes[] | name] | map(select(. == $me or IN($teams[]))) | length > 0,
+  stillRequested: ($pendingMe or ($pendingTeams | length) > 0),
   myReview: (if ($mine | length) == 0 then null else {
     latestState: ($mine | last | .state),
     latestAt: ($mine | last | .submittedAt),

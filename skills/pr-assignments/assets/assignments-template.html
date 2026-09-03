@@ -124,6 +124,8 @@ p.section-note { font-size: 12.5px; color: var(--text-dim); margin: 0 0 12px; }
 .badge.rev-done { color: var(--ok); border-color: var(--ok); }
 .badge.rev-stale { color: var(--due); border-color: var(--due); }
 .badge.draft { font-style: italic; }
+.badge.origin-direct { color: var(--accent); border-color: var(--accent); }
+.badge.origin-team { color: var(--text-dim); }
 
 .body { border-top: 1px solid var(--border); margin: 0 16px 16px; padding-top: 13px; }
 .body p { margin: 0 0 10px; }
@@ -169,6 +171,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
     <span>Generated {{GENERATED_AT}}</span>
     <span>SLA {{SLA_REVIEW_DAYS}} business days to review, overdue after {{SLA_OVERDUE_DAYS}}</span>
     <span>Clock starts at review request</span>
+    <span>Window: requested since {{WINDOW_START}} ({{WINDOW_DAYS}} days)</span>
   </div>
 
   <div class="card digest">
@@ -180,15 +183,16 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
     <div class="stat is-overdue"><div class="k">Overdue</div><div class="v">{{N_OVERDUE}}</div></div>
     <div class="stat is-due"><div class="k">Due now</div><div class="v">{{N_DUE}}</div></div>
     <div class="stat"><div class="k">In budget</div><div class="v">{{N_OK}}</div></div>
-    <div class="stat"><div class="k">Reviewed</div><div class="v">{{N_REVIEWED}}</div></div>
+    <div class="stat"><div class="k">Direct</div><div class="v">{{N_DIRECT}}</div></div>
+    <div class="stat"><div class="k">Via team</div><div class="v">{{N_TEAM}}</div></div>
     <div class="stat"><div class="k">CI failing</div><div class="v">{{N_CI_FAIL}}</div></div>
   </div>
 
-  <!-- ==== SECTION: not yet reviewed, most overdue first ==== -->
-  <h2 class="section">Awaiting your review <span class="count">{{N_UNREVIEWED}}</span></h2>
-  <p class="section-note">Ordered by review-SLA slack, most overdue first.</p>
+  <!-- ==== SECTION 1: asked of you by name. Highest priority. ==== -->
+  <h2 class="section">Requested from you directly <span class="count">{{N_DIRECT_PENDING}}</span></h2>
+  <p class="section-note">Named as a reviewer yourself — nobody else is going to pick these up. Ordered by review-SLA slack, most overdue first.</p>
 
-  <!-- repeat one .pr block per PR; classes: lane-overdue | lane-due | lane-ok -->
+  <!-- repeat one .pr block per direct-request PR; lane/badge classes: lane-overdue+due-overdue | lane-due+due-today | lane-ok+due-soon -->
   <details class="card pr lane-overdue">
     <summary>
       <div class="head">
@@ -220,7 +224,43 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
     </div>
   </details>
 
-  <!-- ==== SECTION: already reviewed by the viewer ==== -->
+  <!-- ==== SECTION 2: reached you through a team. Shareable with teammates. ==== -->
+  <h2 class="section">Requested through a team <span class="count">{{N_TEAM_PENDING}}</span></h2>
+  <p class="section-note">Reached you via {{TEAM_LIST}}. Any member of the team can take these. Ordered by review-SLA slack, most overdue first.</p>
+
+  <!-- repeat one .pr block per team-request PR; add <span class="badge origin-team">{{TEAM_SLUG}}</span> to .pr-meta when more than one team is in play -->
+  <details class="card pr lane-overdue">
+    <summary>
+      <div class="head">
+        <span class="badge due-overdue">{{DUE_LABEL}}</span>
+        <span class="slug"><a href="{{URL}}">{{REPO}}#{{NUMBER}}</a></span>
+        <span class="title">{{TITLE}}</span>
+      </div>
+      <p class="oneliner">{{ONE_LINER}}</p>
+      <div class="pr-meta">
+        <span>opened {{OPENED_HUMAN}}</span>
+        <span>requested {{REQUESTED_HUMAN}}</span>
+        <span>by <code>{{AUTHOR}}</code></span>
+        <span>{{SIZE_HUMAN}}</span>
+        <span class="badge ci-fail">{{CI_LABEL}}</span>
+        <span class="badge rev-none">{{REVIEW_LABEL}}</span>
+      </div>
+    </summary>
+    <div class="body">
+      <span class="label">Conversation</span>
+      <p>{{CONVERSATION}}</p>
+      <span class="label">Open threads</span>
+      <ul>
+        <li>{{THREAD_ITEM}}</li>
+      </ul>
+      <span class="label">CI</span>
+      <p>{{CI_DETAIL}}</p>
+      <span class="label">Signals</span>
+      <p>{{SIGNALS}}</p>
+    </div>
+  </details>
+
+  <!-- ==== SECTION 3: your review already on record, either origin ==== -->
   <h2 class="section">Already reviewed by you <span class="count">{{N_REVIEWED}}</span></h2>
   <p class="section-note">Still open with your review on record. Re-check the ones with commits after your review.</p>
 
@@ -236,6 +276,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
         <span>opened {{OPENED_HUMAN}}</span>
         <span>you reviewed {{MY_REVIEW_HUMAN}}</span>
         <span>by <code>{{AUTHOR}}</code></span>
+        <span class="badge origin-direct">{{ORIGIN_LABEL}}</span>
         <span class="badge ci-pass">{{CI_LABEL}}</span>
       </div>
     </summary>
@@ -252,12 +293,13 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
     <div class="body tablewrap">
       <table>
         <thead><tr>
-          <th>PR</th><th>Due</th><th>Opened</th><th>Requested</th><th>CI</th><th>Your review</th><th class="num">Size</th>
+          <th>PR</th><th>Due</th><th>Origin</th><th>Opened</th><th>Requested</th><th>CI</th><th>Your review</th><th class="num">Size</th>
         </tr></thead>
         <tbody>
           <tr>
             <td><a href="{{URL}}">{{REPO}}#{{NUMBER}}</a></td>
             <td>{{DUE_LABEL}}</td>
+            <td>{{ORIGIN_LABEL}}</td>
             <td>{{OPENED_SHORT}}</td>
             <td>{{REQUESTED_SHORT}}</td>
             <td>{{CI_LABEL}}</td>
