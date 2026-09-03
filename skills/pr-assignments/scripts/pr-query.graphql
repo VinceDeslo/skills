@@ -1,0 +1,67 @@
+query($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      number
+      title
+      url
+      body
+      createdAt
+      updatedAt
+      isDraft
+      state
+      reviewDecision
+      additions
+      deletions
+      changedFiles
+      author { login }
+      baseRefName
+      headRefName
+      labels(first: 15) { nodes { name } }
+      reviewRequests(first: 25) {
+        nodes { requestedReviewer { __typename ... on User { login } ... on Team { name slug } } }
+      }
+      timelineItems(last: 100, itemTypes: [REVIEW_REQUESTED_EVENT, READY_FOR_REVIEW_EVENT]) {
+        nodes {
+          __typename
+          ... on ReviewRequestedEvent {
+            createdAt
+            requestedReviewer { __typename ... on User { login } ... on Team { slug } }
+          }
+          ... on ReadyForReviewEvent { createdAt }
+        }
+      }
+      reviews(last: 50) {
+        nodes { author { login } state submittedAt body }
+      }
+      comments(last: 40) {
+        nodes { author { login } createdAt body }
+      }
+      reviewThreads(first: 40) {
+        nodes {
+          isResolved
+          isOutdated
+          path
+          comments(first: 6) { nodes { author { login } createdAt body } }
+        }
+      }
+      commits(last: 1) {
+        nodes {
+          commit {
+            committedDate
+            statusCheckRollup {
+              state
+              contexts(first: 100) {
+                totalCount
+                nodes {
+                  __typename
+                  ... on CheckRun { name conclusion status detailsUrl }
+                  ... on StatusContext { context state targetUrl }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

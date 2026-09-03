@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR Assignments — {{VIEWER}}</title>
+<style>
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --border: #dfe3e8;
+  --border-strong: #c6ccd4;
+  --text: #14181d;
+  --text-dim: #5b6572;
+  --text-faint: #8792a0;
+  --accent: #2f6fed;
+  --overdue: #c62828;
+  --overdue-tint: #fdecec;
+  --due: #d97116;
+  --due-tint: #fdf1e3;
+  --ok: #1f9d55;
+  --ok-tint: #e8f5ee;
+  --calm: #5b6572;
+  --shadow: 0 1px 2px rgba(20, 24, 29, .06), 0 8px 24px rgba(20, 24, 29, .05);
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1116; --surface: #161b22; --surface-2: #1c2230;
+    --border: #2a313c; --border-strong: #3b4553;
+    --text: #e8ecf1; --text-dim: #9aa5b4; --text-faint: #6e7b8c;
+    --accent: #6d9bff;
+    --overdue: #f0554f; --overdue-tint: #2e1618;
+    --due: #f0954a; --due-tint: #2c2014;
+    --ok: #46c07d; --ok-tint: #17301f;
+    --calm: #9aa5b4;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1116; --surface: #161b22; --surface-2: #1c2230;
+  --border: #2a313c; --border-strong: #3b4553;
+  --text: #e8ecf1; --text-dim: #9aa5b4; --text-faint: #6e7b8c;
+  --accent: #6d9bff;
+  --overdue: #f0554f; --overdue-tint: #2e1618;
+  --due: #f0954a; --due-tint: #2c2014;
+  --ok: #46c07d; --ok-tint: #17301f;
+  --calm: #9aa5b4;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 940px; margin: 0 auto; padding: 40px 20px 80px; }
+a { color: var(--accent); }
+code {
+  font-family: var(--mono); font-size: .86em;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 4px; padding: .5px 4px; overflow-wrap: anywhere;
+}
+.meta code, .pr-meta code, .legend code, .pr > summary .title code, td code {
+  background: none; border: 0; padding: 0; font-size: .92em;
+}
+
+.eyebrow { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; margin: 0 0 6px; }
+h1 { font-size: clamp(24px, 4vw, 32px); line-height: 1.2; margin: 0 0 10px; letter-spacing: -.02em; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--text-dim); margin-bottom: 22px; }
+.meta span { white-space: nowrap; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+
+.digest { padding: 20px 22px; margin-bottom: 14px; }
+.digest p { margin: 0 0 10px; font-size: 15.5px; }
+.digest p:last-child { margin-bottom: 0; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 10px; margin-bottom: 26px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 11px 13px; }
+.stat .k { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+.stat .v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.3; }
+.stat.is-overdue .v { color: var(--overdue); }
+.stat.is-due .v { color: var(--due); }
+
+h2.section { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; margin: 30px 0 6px; display: flex; align-items: center; gap: 8px; }
+h2.section .count { color: var(--text-faint); font-weight: 500; }
+p.section-note { font-size: 12.5px; color: var(--text-dim); margin: 0 0 12px; }
+
+/* ---- one PR ---- */
+.pr { border-left: 3px solid var(--lane); margin-bottom: 8px; overflow: hidden; --lane: var(--border-strong); }
+.pr.lane-overdue { --lane: var(--overdue); }
+.pr.lane-due     { --lane: var(--due); }
+.pr.lane-ok      { --lane: var(--ok); }
+.pr.lane-done    { --lane: var(--calm); }
+.pr > summary { cursor: pointer; list-style: none; padding: 13px 16px; display: block; }
+.pr > summary::-webkit-details-marker { display: none; }
+.pr > summary:hover { background: var(--surface-2); }
+.pr > summary .head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.pr > summary .head::after { content: "＋"; margin-left: auto; color: var(--text-faint); font-size: 13px; align-self: center; }
+.pr[open] > summary .head::after { content: "−"; }
+.pr .slug { font-family: var(--mono); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.pr .title { font-weight: 600; flex: 1 1 260px; min-width: 0; }
+.pr .oneliner { margin: 7px 0 0; font-size: 14px; color: var(--text-dim); }
+.pr-meta { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 12px; color: var(--text-faint); margin-top: 8px; }
+.pr-meta span { white-space: nowrap; }
+
+.badge {
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700;
+  padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+  background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.due-overdue { background: var(--overdue-tint); color: var(--overdue); border-color: var(--overdue); }
+.badge.due-today   { background: var(--due-tint);     color: var(--due);     border-color: var(--due); }
+.badge.due-soon    { background: var(--surface-2);    color: var(--text-dim); }
+.badge.ci-pass { color: var(--ok); border-color: var(--ok); background: var(--ok-tint); }
+.badge.ci-fail { color: var(--overdue); border-color: var(--overdue); background: var(--overdue-tint); }
+.badge.ci-pending { color: var(--due); border-color: var(--due); background: var(--due-tint); }
+.badge.ci-none { color: var(--text-faint); }
+.badge.rev-none { color: var(--overdue); border-color: var(--overdue); }
+.badge.rev-done { color: var(--ok); border-color: var(--ok); }
+.badge.rev-stale { color: var(--due); border-color: var(--due); }
+.badge.draft { font-style: italic; }
+
+.body { border-top: 1px solid var(--border); margin: 0 16px 16px; padding-top: 13px; }
+.body p { margin: 0 0 10px; }
+.body p:last-child { margin-bottom: 0; }
+.body .label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; display: block; margin-top: 4px; }
+.body ul { margin: 4px 0 10px; padding-left: 20px; }
+.body li { margin-bottom: 3px; font-size: 14px; }
+
+.empty { color: var(--text-dim); font-size: 14px; padding: 12px 16px; }
+
+details.fold { margin: 26px 0 8px; }
+details.fold > summary {
+  cursor: pointer; list-style: none; padding: 13px 16px; font-weight: 600; font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: "＋"; margin-left: auto; color: var(--text-faint); font-size: 13px; font-weight: 400; }
+details.fold[open] > summary::after { content: "−"; }
+details.fold > summary:hover { background: var(--surface-2); }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; padding: 0 10px 8px 0; white-space: nowrap; }
+td { padding: 6px 10px 6px 0; border-top: 1px solid var(--border); vertical-align: top; }
+td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--text-dim); margin: 24px 0 0; }
+.legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.legend .swatch.overdue { background: var(--overdue); }
+.legend .swatch.due { background: var(--due); }
+.legend .swatch.ok { background: var(--ok); }
+.legend .swatch.done { background: var(--calm); }
+
+footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="eyebrow">Pull request assignments</p>
+  <h1>{{TOTAL}} PRs waiting on <code>{{VIEWER}}</code></h1>
+  <div class="meta">
+    <span>Generated {{GENERATED_AT}}</span>
+    <span>SLA {{SLA_REVIEW_DAYS}} business days to review, overdue after {{SLA_OVERDUE_DAYS}}</span>
+    <span>Clock starts at review request</span>
+  </div>
+
+  <div class="card digest">
+    <p>{{HEADLINE}}</p>
+    <p class="verdict">{{TRIAGE_ADVICE}}</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat is-overdue"><div class="k">Overdue</div><div class="v">{{N_OVERDUE}}</div></div>
+    <div class="stat is-due"><div class="k">Due now</div><div class="v">{{N_DUE}}</div></div>
+    <div class="stat"><div class="k">In budget</div><div class="v">{{N_OK}}</div></div>
+    <div class="stat"><div class="k">Reviewed</div><div class="v">{{N_REVIEWED}}</div></div>
+    <div class="stat"><div class="k">CI failing</div><div class="v">{{N_CI_FAIL}}</div></div>
+  </div>
+
+  <!-- ==== SECTION: not yet reviewed, most overdue first ==== -->
+  <h2 class="section">Awaiting your review <span class="count">{{N_UNREVIEWED}}</span></h2>
+  <p class="section-note">Ordered by review-SLA slack, most overdue first.</p>
+
+  <!-- repeat one .pr block per PR; classes: lane-overdue | lane-due | lane-ok -->
+  <details class="card pr lane-overdue">
+    <summary>
+      <div class="head">
+        <span class="badge due-overdue">{{DUE_LABEL}}</span>
+        <span class="slug"><a href="{{URL}}">{{REPO}}#{{NUMBER}}</a></span>
+        <span class="title">{{TITLE}}</span>
+      </div>
+      <p class="oneliner">{{ONE_LINER}}</p>
+      <div class="pr-meta">
+        <span>opened {{OPENED_HUMAN}}</span>
+        <span>requested {{REQUESTED_HUMAN}}</span>
+        <span>by <code>{{AUTHOR}}</code></span>
+        <span>{{SIZE_HUMAN}}</span>
+        <span class="badge ci-fail">{{CI_LABEL}}</span>
+        <span class="badge rev-none">{{REVIEW_LABEL}}</span>
+      </div>
+    </summary>
+    <div class="body">
+      <span class="label">Conversation</span>
+      <p>{{CONVERSATION}}</p>
+      <span class="label">Open threads</span>
+      <ul>
+        <li>{{THREAD_ITEM}}</li>
+      </ul>
+      <span class="label">CI</span>
+      <p>{{CI_DETAIL}}</p>
+      <span class="label">Signals</span>
+      <p>{{SIGNALS}}</p>
+    </div>
+  </details>
+
+  <!-- ==== SECTION: already reviewed by the viewer ==== -->
+  <h2 class="section">Already reviewed by you <span class="count">{{N_REVIEWED}}</span></h2>
+  <p class="section-note">Still open with your review on record. Re-check the ones with commits after your review.</p>
+
+  <details class="card pr lane-done">
+    <summary>
+      <div class="head">
+        <span class="badge rev-done">{{REVIEW_LABEL}}</span>
+        <span class="slug"><a href="{{URL}}">{{REPO}}#{{NUMBER}}</a></span>
+        <span class="title">{{TITLE}}</span>
+      </div>
+      <p class="oneliner">{{ONE_LINER}}</p>
+      <div class="pr-meta">
+        <span>opened {{OPENED_HUMAN}}</span>
+        <span>you reviewed {{MY_REVIEW_HUMAN}}</span>
+        <span>by <code>{{AUTHOR}}</code></span>
+        <span class="badge ci-pass">{{CI_LABEL}}</span>
+      </div>
+    </summary>
+    <div class="body">
+      <span class="label">Conversation</span>
+      <p>{{CONVERSATION}}</p>
+      <span class="label">Signals</span>
+      <p>{{SIGNALS}}</p>
+    </div>
+  </details>
+
+  <details class="fold card">
+    <summary>All assignments at a glance</summary>
+    <div class="body tablewrap">
+      <table>
+        <thead><tr>
+          <th>PR</th><th>Due</th><th>Opened</th><th>Requested</th><th>CI</th><th>Your review</th><th class="num">Size</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><a href="{{URL}}">{{REPO}}#{{NUMBER}}</a></td>
+            <td>{{DUE_LABEL}}</td>
+            <td>{{OPENED_SHORT}}</td>
+            <td>{{REQUESTED_SHORT}}</td>
+            <td>{{CI_LABEL}}</td>
+            <td>{{REVIEW_LABEL}}</td>
+            <td class="num">{{SIZE_SHORT}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="fold card">
+    <summary>How this was built</summary>
+    <div class="body">
+      <p>{{METHODOLOGY}}</p>
+    </div>
+  </details>
+
+  <div class="legend">
+    <span><i class="swatch overdue"></i>past the overdue threshold</span>
+    <span><i class="swatch due"></i>due now or within a day</span>
+    <span><i class="swatch ok"></i>inside the review budget</span>
+    <span><i class="swatch done"></i>your review already on record</span>
+  </div>
+
+  <footer>
+    Read-only report. Nothing was posted to any pull request, and no repository was cloned or
+    modified. Every field comes from GitHub API reads through <code>gh</code>.
+  </footer>
+
+</div>
+</body>
+</html>
