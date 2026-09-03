@@ -19,6 +19,7 @@ skills add vincedeslo/skills -s <skill-name> -a claude-code -y   # one skill, on
 | [design-doc](skills/design-doc/SKILL.md) | Write a design doc for a software idea and publish it into the Obsidian vault with the Obsidian CLI, filed under the source repository's path |
 | [feature](skills/feature/SKILL.md) | Start a feature from a Linear ticket — create a ticket-prefixed worktree, scaffold the implementation, and stop at a reviewable state without committing or pushing |
 | [new-skill](skills/new-skill/SKILL.md) | Bootstrap a new skill in this catalog — scaffolding, spec-compliant frontmatter, validation, and commit conventions |
+| [pr-digest](skills/pr-digest/SKILL.md) | Review a PR from its link in four in-session passes — orient, correctness, fit, verify — and emit a short HTML digest of at most five major, five minor, and five nits into a reboot-cleared `temp_reviews` directory, without touching the PR |
 | [prune-trees](skills/prune-trees/SKILL.md) | Remove worktrees already merged into the default branch across every repository under `~/repos/personal` and `~/repos/work`, previewed as one table for approval before anything is removed |
 | [refresh-repos](skills/refresh-repos/SKILL.md) | Fast-forward the default branch of every repository under `~/repos/personal` and `~/repos/work`, discovering them with worktrunk |
 | [service-scorecard](skills/service-scorecard/SKILL.md) | Audit a service repo and produce a shareable HTML report card grading it A–F across 23 facets, each with the top 3 paths to improvement |
