@@ -52,7 +52,8 @@ pass a larger day count and say in the report which window was used.
 Each record carries: `repo`, `number`, `url`, `title`, `author`, `isDraft`, `state`,
 `reviewDecision`, `createdAt`, `updatedAt`, `size`, `branches`, `labels`, a truncated `body`,
 `origin` (`direct`, `team`, or `unattributed`), `originTeams`, `clock` (`requestedAt` plus
-`source`), `stillRequested`, `myReview`, `otherReviews`, `lastCommitAt`, `ci` (`rollup`, `total`,
+`source`), `stillRequested`, `myReview`, `otherReviews`, `peerReview` (`state`, `approvals`,
+`changesRequested`, `reviewers`, `latestAt`, `stale`), `lastCommitAt`, `ci` (`rollup`, `total`,
 `failing`, `pending`), `issueComments`, and `reviewThreads`.
 
 Read the JSON. If the array is empty, stop here and say the review queue is clear — do not render an
@@ -74,6 +75,8 @@ slack table, and the exact status vocabulary. Then, for every PR:
 - Derive `REVIEW_LABEL` from `myReview` and `lastCommitAt`, and with it the section the PR belongs
   in — anything not signed off goes in **Awaiting your review**.
 - Derive `CI_LABEL` from `ci.rollup`.
+- Derive `PEER_LABEL` from `peerReview` — whether anyone other than you and the author has reviewed
+  it, and whether their sign-off still covers the newest commit.
 
 Then place each PR in one of three sections, in this order:
 
@@ -136,6 +139,8 @@ Never speculate about what someone meant beyond what the comment text says.
   three more reached you through infracost/engineering; none are past due yet.`
 - **`TRIAGE_ADVICE`** — one or two sentences naming the single PR to open first and why, plus
   anything that can be deferred or skipped cheaply (bot bumps, PRs already approved by someone else).
+  Use the peer-review state here: a PR with `NO PEER REVIEW` needs a real reading, while one
+  approved and unchanged since may need only a skim.
 - **`METHODOLOGY`** — the queries run, the window applied and how many PRs it excluded, the SLA
   thresholds, the origin split (how many direct vs. team vs. unattributed), any PRs the fetch could
   not reach, and the fact that the run was read-only. This is where honesty about the data's limits
@@ -161,6 +166,9 @@ Rules:
   the distinction matters.
 - **`TEAM_LIST`** names the teams that actually appear in section 2, in `<code>`, as
   `<code>infracost/engineering</code>`. When one team accounts for all of them, say just that one.
+- **`PEER_LABEL`** goes on every PR card and every table row, in all three sections, with the badge
+  class its state calls for. Keep the legend rows for the peer states actually used and delete the
+  rest.
 
 - **Delete, never leave.** Any token you cannot fill goes, along with the element around it. A
   visible `{{TOKEN}}` in the output is a bug.
@@ -235,6 +243,12 @@ Finally, confirm explicitly that nothing was written to any PR.
 - **`reviewDecision` already `APPROVED`** by someone else while the user is still requested: keep it
   in the awaiting section — the request is live — but say in the signals line that sign-off already
   exists, so it can be deferred.
+- **A peer approval that predates the newest commit:** the badge is `PEER APPROVED, STALE`, and it
+  is worth a sentence in the signals line — the approval is on record but nobody has read the code
+  as it now stands, which makes the PR closer to unreviewed than the green badge suggests.
+- **The author is also a reviewer of their own PR:** their `COMMENTED` reviews are thread replies and
+  the normalizer already excludes them. Never count the author as a peer reviewer, and never let
+  their replies turn `NO PEER REVIEW` into `PEER COMMENTED`.
 - **Huge queue** (40+ PRs): fetch them all, but write full one-liners and recaps only for the
   unreviewed and overdue ones. For the rest, the table row and the badges are enough — and say in
   the methodology note which PRs got the short treatment.

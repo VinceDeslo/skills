@@ -83,6 +83,35 @@ A PR that reached the fetch output while `myReview` is non-null and `stillReques
 re-requested — that is exactly the `RE-REVIEW` case, and it belongs in its origin's section with a
 live clock, not in "Already reviewed by you".
 
+## Peer review status
+
+From the `peerReview` object, which answers one question: **has anybody other than you looked at
+this yet?** It is derived from the reviews of everyone except the user *and the PR author* — an
+author's replies to review threads are recorded as `COMMENTED` reviews and are not peer review.
+One decisive state per reviewer: their latest `APPROVED`, `CHANGES_REQUESTED`, or `DISMISSED`, with
+`COMMENTED` counting only when that reviewer has nothing stronger.
+
+| `peerReview` | `PEER_LABEL` | Badge class |
+| --- | --- | --- |
+| `state` is `none` | `NO PEER REVIEW` | `peer-none` |
+| `state` is `approved`, `stale` false | `PEER APPROVED (n)` — n = `approvals`, omitted when 1 | `peer-approved` |
+| `state` is `approved`, `stale` true | `PEER APPROVED, STALE` | `peer-stale` |
+| `state` is `changes_requested` | `PEER CHANGES REQUESTED` | `peer-changes` |
+| `state` is `commented` | `PEER COMMENTED (n)` — n = `reviewers` length | `peer-commented` |
+
+`stale` is true when the newest decisive peer review predates `lastCommitAt` — the sign-off does not
+cover the code you are about to read. That distinction matters more than the approval itself, so it
+wins the badge.
+
+This badge does not change the ranking. `NO PEER REVIEW` is not more urgent than `PEER APPROVED`;
+it changes how you *read* the PR, not when. What it does change is the triage advice: a PR nobody
+has looked at needs a real review, while one already approved and unchanged since may only need a
+skim. Say that in `TRIAGE_ADVICE` when it applies.
+
+Do not confuse it with `reviewDecision`. That field goes to `REVIEW_REQUIRED` whenever any request
+is outstanding, even with an approval already on the PR, so it cannot answer this question on its
+own.
+
 ## CI status
 
 From the `ci` object, which reads the status check rollup of the head commit.

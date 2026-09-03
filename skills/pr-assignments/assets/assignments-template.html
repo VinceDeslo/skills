@@ -126,6 +126,11 @@ p.section-note { font-size: 12.5px; color: var(--text-dim); margin: 0 0 12px; }
 .badge.draft { font-style: italic; }
 .badge.origin-direct { color: var(--accent); border-color: var(--accent); }
 .badge.origin-team { color: var(--text-dim); }
+.badge.peer-none { color: var(--accent); border-color: var(--border-strong); }
+.badge.peer-approved { color: var(--ok); border-color: var(--ok); background: var(--ok-tint); }
+.badge.peer-stale { color: var(--due); border-color: var(--due); background: var(--due-tint); }
+.badge.peer-changes { color: var(--due); border-color: var(--due); }
+.badge.peer-commented { color: var(--text-dim); }
 
 .body { border-top: 1px solid var(--border); margin: 0 16px 16px; padding-top: 13px; }
 .body p { margin: 0 0 10px; }
@@ -206,6 +211,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
         <span>requested {{REQUESTED_HUMAN}}</span>
         <span>by <code>{{AUTHOR}}</code></span>
         <span>{{SIZE_HUMAN}}</span>
+        <span class="badge peer-none">{{PEER_LABEL}}</span>
         <span class="badge ci-fail">{{CI_LABEL}}</span>
         <span class="badge rev-none">{{REVIEW_LABEL}}</span>
       </div>
@@ -242,6 +248,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
         <span>requested {{REQUESTED_HUMAN}}</span>
         <span>by <code>{{AUTHOR}}</code></span>
         <span>{{SIZE_HUMAN}}</span>
+        <span class="badge peer-none">{{PEER_LABEL}}</span>
         <span class="badge ci-fail">{{CI_LABEL}}</span>
         <span class="badge rev-none">{{REVIEW_LABEL}}</span>
       </div>
@@ -277,6 +284,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
         <span>you reviewed {{MY_REVIEW_HUMAN}}</span>
         <span>by <code>{{AUTHOR}}</code></span>
         <span class="badge origin-direct">{{ORIGIN_LABEL}}</span>
+        <span class="badge peer-approved">{{PEER_LABEL}}</span>
         <span class="badge ci-pass">{{CI_LABEL}}</span>
       </div>
     </summary>
@@ -293,7 +301,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
     <div class="body tablewrap">
       <table>
         <thead><tr>
-          <th>PR</th><th>Due</th><th>Origin</th><th>Opened</th><th>Requested</th><th>CI</th><th>Your review</th><th class="num">Size</th>
+          <th>PR</th><th>Due</th><th>Origin</th><th>Opened</th><th>Requested</th><th>Peer review</th><th>CI</th><th>Your review</th><th class="num">Size</th>
         </tr></thead>
         <tbody>
           <tr>
@@ -302,6 +310,7 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
             <td>{{ORIGIN_LABEL}}</td>
             <td>{{OPENED_SHORT}}</td>
             <td>{{REQUESTED_SHORT}}</td>
+            <td>{{PEER_LABEL}}</td>
             <td>{{CI_LABEL}}</td>
             <td>{{REVIEW_LABEL}}</td>
             <td class="num">{{SIZE_SHORT}}</td>
@@ -323,6 +332,12 @@ footer { margin-top: 34px; font-size: 12px; color: var(--text-faint); line-heigh
     <span><i class="swatch due"></i>due now or within a day</span>
     <span><i class="swatch ok"></i>inside the review budget</span>
     <span><i class="swatch done"></i>your review already on record</span>
+  </div>
+  <div class="legend">
+    <span><span class="badge peer-none">NO PEER REVIEW</span> you are the first reader</span>
+    <span><span class="badge peer-approved">PEER APPROVED</span> someone else has signed off</span>
+    <span><span class="badge peer-stale">PEER APPROVED, STALE</span> signed off before the newest commit</span>
+    <span><span class="badge peer-changes">PEER CHANGES REQUESTED</span> waiting on the author</span>
   </div>
 
   <footer>

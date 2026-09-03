@@ -10,6 +10,30 @@ def ctxstate: (.conclusion // .status // .state // "UNKNOWN");
 | ([$reqs[] | select(name | IN($teams[]))] | sort_by(.createdAt) | last) as $viaTeam
 | ([$pr.timelineItems.nodes[] | select(.__typename == "ReadyForReviewEvent")] | sort_by(.createdAt) | last) as $ready
 | ([$pr.reviews.nodes[] | select(.author.login == $me)] | sort_by(.submittedAt)) as $mine
+# Peer review: one decisive state per other reviewer. The author is excluded — their
+# replies to review threads are recorded as COMMENTED reviews and are not peer review.
+# GitHub ignores COMMENTED when deciding whether someone signed off, so it only counts
+# here when nothing stronger exists.
+| ($pr.author.login // "ghost") as $prAuthor
+| ([$pr.reviews.nodes[]
+    | select((.author.login // "ghost") | . != $me and . != $prAuthor)
+    | select(.state != "PENDING")]) as $peerReviews
+| ($peerReviews
+   | group_by(.author.login // "ghost")
+   | map(
+       ([.[] | select(.state | IN("APPROVED", "CHANGES_REQUESTED", "DISMISSED"))]
+        | sort_by(.submittedAt) | last) as $decisive
+       | {
+           author: (.[0].author.login // "ghost"),
+           state: ($decisive.state // "COMMENTED"),
+           at: ($decisive.submittedAt // ([.[].submittedAt] | sort | last))
+         })) as $peers
+| ([$peers[] | select(.state == "APPROVED")]) as $peerApprovals
+| ([$peers[] | select(.state == "CHANGES_REQUESTED")]) as $peerBlocks
+| (if ($peerBlocks | length) > 0 then "changes_requested"
+   elif ($peerApprovals | length) > 0 then "approved"
+   elif ([$peers[] | select(.state == "COMMENTED")] | length) > 0 then "commented"
+   else "none" end) as $peerState
 | (($pr.commits.nodes[0].commit.statusCheckRollup) // null) as $roll
 | (($roll.contexts.nodes) // []) as $ctx
 | ([$pr.reviewRequests.nodes[] | name]) as $pending
@@ -58,6 +82,19 @@ def ctxstate: (.conclusion // .status // .state // "UNKNOWN");
     author: (.author.login // "ghost"), state: .state, at: .submittedAt, body: (.body | trunc(400))
   }],
   lastCommitAt: ($pr.commits.nodes[0].commit.committedDate // $pr.createdAt),
+  peerReview: {
+    state: $peerState,
+    approvals: ($peerApprovals | length),
+    changesRequested: ($peerBlocks | length),
+    reviewers: [$peers[] | select(.state != "DISMISSED") | .author] | unique,
+    latestAt: ([$peers[] | select(.state != "DISMISSED") | .at] | sort | last),
+    # A sign-off that predates the newest commit no longer covers the code you are reading.
+    stale: (
+      ([$peers[] | select(.state | IN("APPROVED", "CHANGES_REQUESTED")) | .at] | sort | last) as $decidedAt
+      | if $decidedAt == null then false
+        else $decidedAt < ($pr.commits.nodes[0].commit.committedDate // $pr.createdAt) end
+    )
+  },
   ci: {
     rollup: ($roll.state // "NONE"),
     total: ($roll.contexts.totalCount // 0),
