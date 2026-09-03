@@ -169,6 +169,10 @@ Rules:
 - **`PEER_LABEL`** goes on every PR card and every table row, in all three sections, with the badge
   class its state calls for. Keep the legend rows for the peer states actually used and delete the
   rest.
+- **All badges go in `.pr-badges`**, the card's bottom row — due, peer, CI, review, and origin, in
+  that order. Never put a badge in `.head` or `.pr-meta`: those hold the link, the title, and the
+  plain-text facts, and a badge mixed into that wrapping text line orphans onto a ragged row of its
+  own. `.pr-meta` is text only; `.pr-badges` is badges only.
 
 - **Delete, never leave.** Any token you cannot fill goes, along with the element around it. A
   visible `{{TOKEN}}` in the output is a bug.
