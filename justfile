@@ -1,4 +1,4 @@
-agents := "claude-code opencode"
+agents := "claude-code opencode pi codex"
 
 # List all available recipes
 default:
