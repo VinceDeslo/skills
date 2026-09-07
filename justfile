@@ -1,14 +1,16 @@
+agents := "claude-code opencode"
+
 # List all available recipes
 default:
     @just --list
 
 # Install all skills globally from this working copy
 link:
-    skills add {{justfile_directory()}} -g --all
+    skills add {{justfile_directory()}} -g -s '*' -a {{agents}} -y
 
 # Install all skills globally from the published GitHub repo
 remote:
-    skills add vincedeslo/skills -g --all
+    skills add vincedeslo/skills -g -s '*' -a {{agents}} -y
 
 # Pull the latest version of every globally installed skill
 update:
