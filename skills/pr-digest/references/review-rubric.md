@@ -47,8 +47,9 @@ Every candidate is attacked before it is kept. Go back to the code, not to your 
 
 What survives gets a verdict:
 
-- **`confirmed`** — you traced it in the code and can state the failure. Anything reported as a
-  major must be `confirmed` or must say plainly why it could not be.
+- **`confirmed`** — you traced it in the code and can state the failure. The frames you walked to
+  get there are the finding's trace; write them down now, while the files are open. Anything
+  reported as a major must be `confirmed` or must say plainly why it could not be.
 - **`likely`** — you still believe it but could not fully pin it down. Allowed, but the detail must
   end with the one thing that would settle it ("confirm whether `resolve()` is ever called with a
   nil tenant"). A `likely` with no such sentence is an unverified guess wearing a badge.
@@ -67,6 +68,7 @@ The template expects these. Write them before rendering.
 | detail | 2–4 sentences: what is wrong and why it matters. For `likely`, ends with what would settle it. |
 | failure | Trigger → wrong outcome. Required for major; omit the element otherwise. |
 | suggestion | The smallest change that fixes it. Not a redesign. |
+| trace | 3–6 frames from the entry point to the `location` line, each a real file, function, and one verbatim line read at the PR head. Required for major and minor; nits carry none. Markup in `diagram-kit.md`. |
 | verdict | `confirmed` or `likely`. Nits carry none. |
 
 Every identifier inside these fields — file paths, functions, types, variables, columns, config

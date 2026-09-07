@@ -151,6 +151,7 @@ td.path { font-family: var(--mono); font-size: 12px; word-break: break-all; }
 .is-changed { border-color: var(--changed); background: var(--changed-tint); color: var(--changed); }
 .is-gone    { border-color: var(--gone);    background: var(--gone-tint);    color: var(--gone); border-style: dashed; }
 .node.is-new, .node.is-changed, .node.is-gone { color: var(--text); }
+.edge.is-new, .edge.is-changed, .edge.is-gone { background: transparent; color: inherit; border: 0; }
 .node.is-new     { border-left-color: var(--new); }
 .node.is-changed { border-left-color: var(--changed); }
 .node.is-gone    { border-left-color: var(--gone); }
@@ -201,6 +202,53 @@ td.path { font-family: var(--mono); font-size: 12px; word-break: break-all; }
 .layer > .nodes { display: flex; flex-wrap: wrap; gap: 6px; }
 .layer .node { background: var(--surface); font-weight: 500; padding: 5px 9px; }
 
+/* compare: before / after panels, each holding one kit pattern */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.compare > .panel { border: 1px solid var(--border); border-radius: 9px; padding: 12px 12px 14px; background: var(--surface); min-width: 0; }
+.compare > .panel > h4 { margin: 0 0 10px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.compare > .panel > h4 code { font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.compare > .panel.before > h4::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gone); }
+.compare > .panel.after  > h4::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--new); }
+.compare .layer { background: var(--surface-2); }
+.compare .layer .node { background: var(--surface); }
+
+/* inside a panel the flow runs top-to-bottom so both sides align row by row */
+.compare .flow { flex-direction: column; align-items: stretch; gap: 4px; }
+.compare .flow > .node { align-self: stretch; }
+.compare .branch > .lane { flex-direction: column; align-items: stretch; gap: 4px; }
+.compare .edge { flex-direction: row-reverse; justify-content: flex-end; align-self: stretch; align-items: center; gap: 10px; min-width: 0; max-width: none; padding-left: 16px; }
+.compare .edge .label { text-align: left; }
+.compare .edge .line { width: 0; height: 22px; border-top: 0; border-left: 1.5px solid var(--border-strong); }
+.compare .edge .line::after { right: auto; top: auto; left: -4.75px; bottom: -1px; border: 4px solid transparent; border-top-color: var(--border-strong); border-left-color: transparent; }
+.compare .edge.dashed .line { border-left-style: dashed; }
+.compare .edge.is-new .line { border-left-color: var(--new); }
+.compare .edge.is-new .line::after { border-top-color: var(--new); border-left-color: transparent; }
+.compare .edge.is-changed .line { border-left-color: var(--changed); }
+.compare .edge.is-changed .line::after { border-top-color: var(--changed); border-left-color: transparent; }
+
+/* trace: call stack from entry point down to the finding site */
+.trace { list-style: none; margin: 4px 0 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); font-family: var(--mono); font-size: 12px; line-height: 1.5; }
+.trace > li { position: relative; padding: 3px 0 3px 14px; min-width: 0; }
+.trace > li::before { content: "└"; position: absolute; left: 0; top: 3px; color: var(--text-faint); }
+.trace > li:first-child::before { content: ""; }
+.trace > li:first-child { padding-left: 0; }
+.trace > li:nth-child(2) { margin-left: 0; }
+.trace > li:nth-child(3) { margin-left: 14px; }
+.trace > li:nth-child(4) { margin-left: 28px; }
+.trace > li:nth-child(5) { margin-left: 42px; }
+.trace > li:nth-child(6) { margin-left: 56px; }
+.trace > li:nth-child(n+7) { margin-left: 70px; }
+.trace .frame { display: block; color: var(--text-dim); font-size: 11px; overflow-wrap: anywhere; }
+.trace .frame code, .trace .excerpt { background: none; border: 0; padding: 0; font-size: inherit; }
+.trace .frame .fn { color: var(--text); font-weight: 600; }
+.trace .excerpt { display: block; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.trace > li.hit { border-left: 3px solid var(--sev); margin-top: 4px; margin-bottom: 4px; padding-left: 10px; background: var(--surface); border-radius: 0 6px 6px 0; }
+.trace > li.hit::before { content: ""; }
+.trace > li.hit .excerpt { font-weight: 600; }
+.trace .why { display: block; font-family: var(--sans); font-size: 12px; color: var(--sev); margin-top: 2px; }
+.trace > li.hit ~ li { color: var(--text-dim); }
+.trace > li.hit ~ li .excerpt { color: var(--text-dim); }
+
 /* fields: schema or payload shape change */
 table.fields td:first-child { font-family: var(--mono); font-size: 12px; }
 table.fields tr.is-new td, table.fields tr.is-changed td, table.fields tr.is-gone td { background: transparent; }
@@ -243,29 +291,59 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
     <div class="stat"><div class="k">Nits</div><div class="v">{{NIT_COUNT}}</div></div>
   </div>
 
-  <!-- Diagram: hand-built from plain elements. Keep exactly one .diagram figure, or delete it
-       entirely when the change is not structural. Pick ONE body pattern (.flow / .steps / .stack /
-       table.fields) from references/diagram-kit.md and delete the others, along with any legend
-       row whose state the diagram does not use. -->
+  <!-- Diagram: before / after, hand-built from plain elements. Keep exactly one .diagram figure,
+       or delete it entirely when the change is not structural. Both panels use the SAME body
+       pattern (.flow / .steps / .stack / table.fields) from references/diagram-kit.md so the eye
+       can diff them. The before panel is the shape at {{BASE}}: neutral nodes, with is-gone on
+       what the PR removes. The after panel is the shape at {{HEAD}}: is-new and is-changed on
+       what the PR adds or alters. Delete any legend row whose state neither panel uses. -->
   <figure class="card diagram">
 
-    <div class="flow">
-      <div class="node">
-        <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code>
+    <div class="compare">
+      <div class="panel before">
+        <h4>Before <code>{{BASE}}</code></h4>
+        <div class="flow">
+          <div class="node">
+            <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code>
+          </div>
+          <div class="edge">
+            <span class="label">{{EDGE_LABEL}}</span>
+            <span class="line"></span>
+          </div>
+          <div class="node is-gone">
+            <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code><span class="tag">gone</span>
+          </div>
+          <div class="edge">
+            <span class="label">{{EDGE_LABEL}}</span>
+            <span class="line"></span>
+          </div>
+          <div class="node">
+            <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code>
+          </div>
+        </div>
       </div>
-      <div class="edge">
-        <span class="label">{{EDGE_LABEL}}</span>
-        <span class="line"></span>
-      </div>
-      <div class="node is-changed">
-        <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code><span class="tag">mod</span>
-      </div>
-      <div class="edge is-new">
-        <span class="label">{{EDGE_LABEL}}</span>
-        <span class="line"></span>
-      </div>
-      <div class="node is-new">
-        <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code><span class="tag">new</span>
+
+      <div class="panel after">
+        <h4>After <code>{{HEAD}}</code></h4>
+        <div class="flow">
+          <div class="node">
+            <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code>
+          </div>
+          <div class="edge is-changed">
+            <span class="label">{{EDGE_LABEL}}</span>
+            <span class="line"></span>
+          </div>
+          <div class="node is-new">
+            <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code><span class="tag">new</span>
+          </div>
+          <div class="edge">
+            <span class="label">{{EDGE_LABEL}}</span>
+            <span class="line"></span>
+          </div>
+          <div class="node is-changed">
+            <span class="kind">{{NODE_KIND}}</span><code>{{NODE_LABEL}}</code><span class="tag">mod</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -288,6 +366,23 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
     </summary>
     <div class="body">
       <p>{{F_DETAIL}}</p>
+      <!-- call stack: entry point first, one frame per layer, the finding site marked .hit.
+           Every excerpt is a real line read at the PR head. 3-6 frames. -->
+      <ol class="trace">
+        <li>
+          <span class="frame"><code>{{T_FILE}}</code> · <code class="fn">{{T_FUNCTION}}</code></span>
+          <code class="excerpt">{{T_EXCERPT}}</code>
+        </li>
+        <li>
+          <span class="frame"><code>{{T_FILE}}</code> · <code class="fn">{{T_FUNCTION}}</code></span>
+          <code class="excerpt">{{T_EXCERPT}}</code>
+        </li>
+        <li class="hit">
+          <span class="frame"><code>{{T_FILE}}:{{T_LINE}}</code> · <code class="fn">{{T_FUNCTION}}</code></span>
+          <code class="excerpt">{{T_EXCERPT}}</code>
+          <span class="why">{{T_WHY}}</span>
+        </li>
+      </ol>
       <p><span class="label">Failure</span>{{F_FAILURE}}</p>
       <p><span class="label">Fix</span>{{F_SUGGESTION}}</p>
     </div>
@@ -303,6 +398,23 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
     </summary>
     <div class="body">
       <p>{{F_DETAIL}}</p>
+      <!-- call stack: entry point first, one frame per layer, the finding site marked .hit.
+           Every excerpt is a real line read at the PR head. 3-6 frames. -->
+      <ol class="trace">
+        <li>
+          <span class="frame"><code>{{T_FILE}}</code> · <code class="fn">{{T_FUNCTION}}</code></span>
+          <code class="excerpt">{{T_EXCERPT}}</code>
+        </li>
+        <li>
+          <span class="frame"><code>{{T_FILE}}</code> · <code class="fn">{{T_FUNCTION}}</code></span>
+          <code class="excerpt">{{T_EXCERPT}}</code>
+        </li>
+        <li class="hit">
+          <span class="frame"><code>{{T_FILE}}:{{T_LINE}}</code> · <code class="fn">{{T_FUNCTION}}</code></span>
+          <code class="excerpt">{{T_EXCERPT}}</code>
+          <span class="why">{{T_WHY}}</span>
+        </li>
+      </ol>
       <p><span class="label">Fix</span>{{F_SUGGESTION}}</p>
     </div>
   </details>

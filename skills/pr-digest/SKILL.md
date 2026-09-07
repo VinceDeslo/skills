@@ -109,6 +109,12 @@ A candidate that survives is `confirmed`. One you still believe but could not fu
 `likely` — allowed, but it must say what would settle it. One that fails any check is dropped
 silently; do not report the fact that you considered it.
 
+While the files are open, record the **trace** for every surviving major and minor: the call path
+from the entry point (workflow step, HTTP handler, CLI command, test) down through each layer to the
+line the finding is about, with one verbatim line read at the PR head per frame. This is what the
+digest shows the reader so they can see the finding in the flow rather than as a bare `path:line`.
+A trace you cannot walk is a sign the finding is `likely` at best.
+
 This pass is where the review earns its keep. Skipping it turns a digest into a list of guesses.
 
 ### 4. Rank and cap
@@ -142,13 +148,16 @@ Three pieces of prose, and they carry the whole report:
 Write plainly. No praise, no hedging, no "great work" — the reader wants the shape of the change and
 the risk, in that order.
 
-### 6. Draw one diagram
+### 6. Draw the before / after
 
-The digest carries a single diagram whose job is to make the change legible at a glance. It is built
-from plain HTML elements — there is no diagram library, no external script, and no rendering step —
-so it reads at body text size and never needs zooming or sideways scrolling.
+The digest carries a single figure whose job is to make the change legible at a glance: two panels
+side by side, **before** (the shape at the base branch) and **after** (the shape at the PR head),
+drawn with the same pattern so the reader's eye diffs them. It is built from plain HTML elements —
+there is no diagram library, no external script, and no rendering step — so it reads at body text
+size and never needs zooming or sideways scrolling.
 
-Read [references/diagram-kit.md](references/diagram-kit.md) for the markup. Pick one pattern:
+Read [references/diagram-kit.md](references/diagram-kit.md) for the markup. Pick one pattern and use
+it in both panels:
 
 - **`.flow`** — a path through components. The default, and right for most PRs. Use `.branch` lanes
   for a fan-out.
@@ -157,23 +166,29 @@ Read [references/diagram-kit.md](references/diagram-kit.md) for the markup. Pick
 - **`.stack`** — grouped layers or subsystems, when the change is about where something now lives.
 - **`table.fields`** — a schema, payload, or config shape change.
 
-Colour carries the whole point of the diagram:
+Colour carries the whole point of the figure, and it splits by side:
 
-- **`is-new`** (green) — introduced by this PR.
-- **`is-changed`** (blue) — existed before, behaves differently now.
-- **`is-gone`** (grey, dashed) — removed or bypassed; include only when its absence is the point.
-- **uncoloured** — untouched context, and most nodes should be this. The colours only mean something
-  if they are rare.
+- **Before panel** — neutral nodes for what exists at the base, plus **`is-gone`** (grey, dashed) on
+  what the PR removes or bypasses.
+- **After panel** — **`is-new`** (green) on what the PR introduces, **`is-changed`** (blue) on what
+  existed and behaves differently now, and neutral for untouched context. Most nodes on both sides
+  are neutral; the colours only mean something if they are rare.
 
-Every coloured node also carries its `<span class="tag">new</span>` or `mod` text label, so the
-state does not depend on colour alone. Keep the legend rows for the states used and delete the rest.
+Nodes present on both sides keep the same position, so a node that moved reads as a move and a node
+that vanished reads as a gap. When the PR is purely additive, the before panel still exists: it shows
+the existing path the new code plugs into, so the reader sees the attachment point.
 
-Twelve nodes maximum, node labels under ~28 characters, edge labels under ~40. If it does not fit,
-it is too big — cut nodes rather than widening anything.
+Every coloured node also carries its `<span class="tag">new</span>`, `mod`, or `gone` text label, so
+the state does not depend on colour alone. Keep the legend rows for the states used and delete the
+rest.
+
+Eight nodes per panel maximum, node labels under ~28 characters, edge labels under ~40. If it does
+not fit, it is too big — cut nodes rather than widening anything. The caption says what moved and
+why, in one or two sentences.
 
 If the change is not structural (a bug fix in one function, a dependency bump, a copy change), it
-gets no diagram. Delete the `<figure class="card diagram">` block entirely rather than shipping a
-diagram that says nothing.
+gets no figure. Delete the `<figure class="card diagram">` block entirely rather than shipping a
+comparison that says nothing.
 
 ### 7. Render
 
@@ -186,11 +201,17 @@ Rules:
 
 - **Delete, never leave.** Any token you cannot fill goes, along with the element around it. A
   visible `{{TOKEN}}` in the output is a bug. The diagram block ships with one pattern filled in as
-  an example — replace it wholesale with your own markup, or delete the figure.
+  an example — replace both panels wholesale with your own markup, or delete the figure.
+- **Every major and minor carries a trace.** The `<ol class="trace">` block sits between the detail
+  and the failure/fix paragraphs: entry point first, one frame per layer, the finding's line last and
+  marked `hit`, three to six frames in all. Each frame's excerpt is a verbatim line read at the PR
+  head — never paraphrased, never invented. The `hit` frame's `path:line` matches the finding's
+  `.loc`, and its `why` names the fault on that line in one clause. Nits carry no trace; delete the
+  block there.
 - **Nothing important hides.** Everything a reader needs to decide — summary, verdict, risk,
-  counts, diagram, and every finding's title and location — is visible without a click. Only
-  detail, failure, fix, the file table, intent, and methodology live behind a `<details>`, and all
-  of those stay closed.
+  counts, the before / after figure, and every finding's title and location — is visible without a
+  click. Only detail, trace, failure, fix, the file table, intent, and methodology live behind a
+  `<details>`, and all of those stay closed.
 - **Empty severity list** — replace its findings with
   `<div class="card empty">Nothing found.</div>`. Keep the heading; an absent section reads as an
   omission.
@@ -241,8 +262,8 @@ Finally, confirm explicitly that nothing was written to the PR.
 - **No local clone:** the review is diff-only. Pass 2 gets weaker because callers are not readable
   without a `gh api` round trip per file — spend those reads on the risky hunks only, mark
   unverifiable candidates `likely`, and say in the methodology note that the review was diff-only.
-- **Nothing found:** ship the digest anyway. The summary, diagram, and file table are worth the read
-  on their own, and a verified "nothing found" is information.
+- **Nothing found:** ship the digest anyway. The summary, before / after figure, and file table are
+  worth the read on their own, and a verified "nothing found" is information.
 - **The PR is the user's own and they ask for it to be posted:** this skill does not post. Say so
   and point at the agent's PR-comment tooling; do not improvise a write.
 - **Non-GitHub host** (GitLab, Bitbucket): `gh` cannot fetch it. Stop and say what is needed rather
