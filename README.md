@@ -16,6 +16,7 @@ skills add vincedeslo/skills -s <skill-name> -a claude-code -y   # one skill, on
 | Skill | Description |
 | --- | --- |
 | [brain-sync](skills/brain-sync/SKILL.md) | Commit and push the personal notes vault at `~/repos/personal/brain` with a dated commit message |
+| [clone-org](skills/clone-org/SKILL.md) | Clone every non-archived repository of a GitHub organization that is not yet checked out under a local root, previewed as a table for approval before anything is cloned |
 | [design-doc](skills/design-doc/SKILL.md) | Write a design doc for a software idea and publish it into the Obsidian vault with the Obsidian CLI, filed under the source repository's path |
 | [feature](skills/feature/SKILL.md) | Start a feature from a Linear ticket — create a ticket-prefixed worktree, scaffold the implementation, and stop at a reviewable state without committing or pushing |
 | [new-skill](skills/new-skill/SKILL.md) | Bootstrap a new skill in this catalog — scaffolding, spec-compliant frontmatter, validation, and commit conventions |
