@@ -1,0 +1,69 @@
+{
+  "entity": "Order",
+  "repo": "acme/shop",
+  "definition": "internal/order/order.go:18",
+  "commit": "3f9c2ab",
+  "summary": "Enumerated from the `OrderStatus` enum in `internal/order/order.go`, the `orders.status` check constraint in migration 041, and every writer found in the HTTP handlers, the payment webhook, and the fulfilment worker. Edges are keyed T1 to T12, coloured by who performs them, and detailed in the tables below. T9 and T12 write a status the declared transition map `AllowedTransitions` does not list.",
+  "actors": {
+    "user": "Customer or operator action through the API or admin UI",
+    "process": "Fulfilment worker, scheduled jobs, database defaults",
+    "external": "Payment provider webhook"
+  },
+  "states": [
+    {"id": "draft", "meaning": "Cart converted to an order but not yet submitted; editable.", "initial": true, "declared": "internal/order/order.go:20"},
+    {"id": "placed", "meaning": "Submitted by the customer; awaiting payment capture.", "declared": "internal/order/order.go:21"},
+    {"id": "paid", "meaning": "Payment captured; eligible for fulfilment.", "declared": "internal/order/order.go:22"},
+    {"id": "shipped", "meaning": "Handed to the carrier; tracking number present.", "declared": "internal/order/order.go:23"},
+    {"id": "delivered", "meaning": "Carrier confirmed delivery.", "terminal": true, "declared": "internal/order/order.go:24"},
+    {"id": "cancelled", "meaning": "Closed before shipment; nothing owed.", "terminal": true, "declared": "internal/order/order.go:25"},
+    {"id": "refunded", "meaning": "Money returned after payment; closed.", "terminal": true, "declared": "internal/order/order.go:26"}
+  ],
+  "machines": [
+    {
+      "title": "Lifecycle",
+      "summary": "The happy path from `draft` to `delivered`, plus the two ways an order returns to `placed` when payment does not settle.",
+      "layout": {
+        "draft": [0, 0],
+        "placed": [1, 0],
+        "paid": [2, 0],
+        "shipped": [3, 0],
+        "delivered": [4, 0]
+      },
+      "note": "Both directions between `placed` and `paid` are drawn as separate curves so every arrowhead names its own edge.",
+      "edges": [
+        {"key": "T1", "from": "draft", "to": "placed", "actor": "user", "trigger": "`POST /orders/{id}/submit`", "guard": "`order.Items` not empty; `validateAddress`", "event": "`order.placed`", "locations": ["internal/api/orders.go:142-160"]},
+        {"key": "T2", "from": "placed", "to": "paid", "actor": "external", "trigger": "Stripe `payment_intent.succeeded` webhook", "guard": "`intent.Amount == order.Total`", "event": "`order.paid`", "locations": ["internal/payments/webhook.go:88-121"]},
+        {"key": "T3", "from": "paid", "to": "placed", "actor": "external", "trigger": "Stripe `charge.dispute.created` webhook", "guard": "–", "event": "`order.payment_disputed`", "locations": ["internal/payments/webhook.go:140-152"]},
+        {"key": "T4", "from": "paid", "to": "shipped", "actor": "process", "trigger": "Fulfilment worker picks the order and books a carrier", "guard": "`stock.Reserve` succeeded; carrier returned a tracking id", "event": "`order.shipped`", "locations": ["internal/fulfilment/worker.go:201-233"]},
+        {"key": "T5", "from": "shipped", "to": "delivered", "actor": "external", "trigger": "Carrier delivery webhook", "guard": "tracking id matches", "event": "`order.delivered`", "locations": ["internal/fulfilment/carrier_webhook.go:55-70"]},
+        {"key": "T6", "from": "placed", "to": "placed", "actor": "process", "trigger": "`retryPayment` cron re-attempts capture", "guard": "attempts < 3", "event": "`order.payment_retried`", "locations": ["internal/payments/retry.go:40-62"], "note": "Self loop: status is rewritten to the same value but `updated_at` and `payment_attempts` change."}
+      ]
+    },
+    {
+      "title": "Cancellation and refund",
+      "summary": "Every edge that closes an order without delivery. T9 and T12 bypass `AllowedTransitions` and write the column directly.",
+      "layout": {
+        "*": [0, 0],
+        "draft": [1, 0],
+        "placed": [2, 0],
+        "paid": [3, 0],
+        "cancelled": [1, 1],
+        "refunded": [3, 1],
+        "shipped": [4, 0]
+      },
+      "edges": [
+        {"key": "T7", "from": ["draft", "placed"], "to": "cancelled", "actor": "user", "trigger": "`POST /orders/{id}/cancel`", "guard": "`AllowedTransitions[status]` contains `cancelled`", "event": "`order.cancelled`", "locations": ["internal/api/orders.go:190-214", "internal/order/transitions.go:12-30"]},
+        {"key": "T8", "from": "paid", "to": "refunded", "actor": "user", "trigger": "Operator refund in admin UI", "guard": "`AllowedTransitions[status]` contains `refunded`; refund amount ≤ captured", "event": "`order.refunded`", "locations": ["internal/admin/refund.go:61-99"]},
+        {"key": "T9", "from": "shipped", "to": "refunded", "actor": "user", "flag": "undeclared", "trigger": "Operator refund in admin UI after shipment", "guard": "none; direct `UPDATE orders SET status`", "event": "`order.refunded`", "locations": ["internal/admin/refund.go:104-118"], "note": "`AllowedTransitions` has no `shipped → refunded` entry; the handler skips the map."},
+        {"key": "T10", "from": "placed", "to": "cancelled", "actor": "process", "trigger": "`expireUnpaid` cron, 48h without payment", "guard": "`payment_attempts >= 3` or `placed_at < now() - 48h`", "event": "`order.expired`", "locations": ["internal/jobs/expire.go:33-58"]},
+        {"key": "T11", "from": "*", "to": "cancelled", "actor": "process", "trigger": "Account deletion cascade", "guard": "none", "event": "`order.cancelled` with reason `account_deleted`", "locations": ["internal/accounts/delete.go:77-90"]},
+        {"key": "T12", "from": "paid", "to": "cancelled", "actor": "external", "flag": "undeclared", "trigger": "Stripe `charge.refunded` webhook", "guard": "none", "event": "`order.cancelled`", "locations": ["internal/payments/webhook.go:160-171"], "note": "Writes `cancelled` on a paid order instead of `refunded`; downstream billing reads this as nothing owed."}
+      ]
+    }
+  ],
+  "method": "Started from the `OrderStatus` enum, then searched for every read and write of the status field: `status =`, `SetStatus(`, `UPDATE orders`, `AllowedTransitions`, raw SQL in migrations, and every emitter of `order.*` events. Each hit was opened and traced to the entry point that triggers it.",
+  "caveats": [
+    "Terraform-managed database triggers were not inspected; none were found in `migrations/` but the production database was not queried.",
+    "The legacy `services/legacy-orders` repository was not crawled."
+  ]
+}
