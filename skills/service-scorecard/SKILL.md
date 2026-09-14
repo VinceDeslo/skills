@@ -1,7 +1,7 @@
 ---
 name: service-scorecard
 description: Audit a service repository and produce a shareable HTML report card grading it A–F across 23 facets — logic duplication, layering, API completeness and security, event contracts, storage, deployment, observability, coupling, maintenance effort, naming consistency, tests, error handling, dependencies, dead code, documentation rot, config and secrets, local dev experience, API versioning, domain boundaries, data migrations, performance shape, and repo navigability — each with the top 3 paths to improvement. Use when asked to score, grade, audit, assess, or review the quality, health, or maintainability of a service or codebase, or when the user says "service-scorecard".
-compatibility: Run from the root of a git repository that contains a single service. Requires file read and shell access. Optional — a browser opener (`open`, `xdg-open`, or `start`) to display the report, and an artifact/document publishing capability if the user wants a hosted link instead of a local file.
+compatibility: Run from the root of a git repository that contains a single service. Requires file read and shell access. Optional — a browser opener (`open`, `xdg-open`, or `start`) to display the report, and the `generate-artifact` skill if the user wants the report saved and served as an artifact instead of a temp file.
 ---
 
 # service-scorecard
@@ -35,7 +35,7 @@ If the repo is a monorepo holding several services, ask which service to grade a
 
 Ask this **before** the analysis, so the run is not interrupted at the end:
 
-> Publish the report as a shareable artifact/hosted link, or write it to a temp file?
+> Save the report as an artifact with the `generate-artifact` skill, or write it to a temp file?
 
 Both routes end with the report opened in the default browser. Record the answer and continue.
 
@@ -127,11 +127,11 @@ start "" "$out"    # Windows
 
 Report the path.
 
-**Artifact / hosted route:**
+**Artifact route:**
 
-Publish the report with whatever artifact or document publishing capability the agent has. If that agent also has design guidance for published pages, load and follow it before writing the file. If the publishing surface supplies its own `<!doctype>`/`<head>`/`<body>` wrapper, strip those tags from the template and keep the `<title>` and `<style>` at the top of the content. Open the returned URL in the browser with the same opener command, and report the URL.
+Hand the report to the `generate-artifact` skill: save the complete document unchanged into `~/.artifacts` under that skill's naming convention, run its checker, and serve it from its index. Open the served URL in the browser with the same opener command, and report the URL and the path.
 
-If no publishing capability exists, say so and fall back to the temp file rather than silently downgrading.
+If the `generate-artifact` skill is not installed, say so and fall back to the temp file rather than silently downgrading.
 
 ### 8. Summarize in chat
 

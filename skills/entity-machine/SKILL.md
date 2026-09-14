@@ -1,7 +1,7 @@
 ---
 name: entity-machine
 description: Crawl one or more codebases for a named entity (struct, class, type, model, enum) and produce a self-contained HTML page with its full state machine — a list of every state and what it represents, one or more state diagrams where every individual transition edge is keyed T1..Tn and coloured by actor, and a table per diagram giving each edge's trigger, guard, emitted event, and code location. Splits into several diagrams per domain or interaction nature when the edges do not fit one. Use when asked to map, diagram, enumerate, or audit the states, statuses, lifecycle, or transitions of an entity, when asked "who can move X from A to B", or when the user says "entity-machine".
-compatibility: Requires shell access, `python3` (standard library only), and a code search tool (`rg` or `grep`) over a local checkout of the repositories to crawl. Optional — a browser opener (`open`, `xdg-open`, or `start`) to display the page, and an artifact or document publishing capability when the user wants a hosted link.
+compatibility: Requires shell access, `python3` (standard library only), and a code search tool (`rg` or `grep`) over a local checkout of the repositories to crawl. Optional — a browser opener (`open`, `xdg-open`, or `start`) to display the page, and the `generate-artifact` skill when the user wants the page saved and served as an artifact.
 ---
 
 # entity-machine
@@ -101,8 +101,9 @@ start "" "$out"    # Windows
 The page is fully self-contained: inline CSS, inline SVG, one small inline script for hover linking
 between a diagram edge and its table row, no network requests. It renders in light and dark themes.
 
-If the user asked for a shareable link and the host agent can publish HTML artifacts, publish the
-same file unchanged and give the link as well as the local path.
+If the user asked for the page as an artifact or for a shareable link, hand the rendered file to
+the `generate-artifact` skill: save the same file unchanged into `~/.artifacts` and serve it from
+that skill's index. Give the served URL as well as the local path.
 
 Then summarize in chat in **four lines at most**: state count and edge count, number of diagrams,
 the most important flagged edge if any, and the file path. Everything else is on the page.

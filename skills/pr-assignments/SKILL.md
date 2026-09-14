@@ -1,7 +1,7 @@
 ---
 name: pr-assignments
-description: Crawl every open GitHub pull request whose review was requested from the authenticated user in the last two weeks, summarize each one in a line, recap its comment conversation, and rank them by review-SLA expiry — unreviewed and most overdue first — split into direct requests then team requests, as a self-contained HTML report in a reboot-cleared temp directory. Strictly read-only, GitHub CLI reads only. Use when asked what PRs are assigned to me, what is waiting on my review, to triage a review queue or review backlog, or when the user says "pr-assignments".
-compatibility: Requires the GitHub CLI (`gh`) authenticated with `repo` and `read:org` scopes, `bash`, and network access. Optional — a browser opener (`open`, `xdg-open`, or `start`) to display the report.
+description: Crawl every open GitHub pull request whose review was requested from the authenticated user in the last two weeks, summarize each one in a line, recap its comment conversation, and rank them by review-SLA expiry — unreviewed and most overdue first — split into direct requests then team requests, as a self-contained HTML report delivered as an artifact through the generate-artifact skill. Strictly read-only, GitHub CLI reads only. Use when asked what PRs are assigned to me, what is waiting on my review, to triage a review queue or review backlog, or when the user says "pr-assignments".
+compatibility: Requires the GitHub CLI (`gh`) authenticated with `repo` and `read:org` scopes, `bash`, and network access. Optional — a browser opener (`open`, `xdg-open`, or `start`) to display the report. Delivery uses the `generate-artifact` skill.
 ---
 
 # pr-assignments
@@ -157,6 +157,9 @@ every PR's detail collapsed so the front page stays a queue.
 Repeat the `.pr` block per PR within each section, and one table row per PR in the at-a-glance fold.
 Rules:
 
+- **`DESCRIPTION`** is one sentence for the `<meta name="description">`: the viewer, the window in
+  days, and the counts split direct vs. team with how many are overdue. The artifact index is built
+  from the title and this tag, so it is the report's card.
 - **Section order is fixed** — direct requests, then team requests, then already-reviewed. Do not
   merge or reorder the sections even when one is empty.
 - **`ORIGIN_LABEL`** is `DIRECT` for a direct request and the team slug in `<code>` for a team one
@@ -201,26 +204,29 @@ Rules:
 
 ### 7. Deliver
 
-Write into an assignments directory under the system temp root, which the OS clears on reboot — the
-report stays readable for as long as the machine is up and never accumulates:
+Deliver the report as an artifact with the `generate-artifact` skill: save the document unchanged
+into `~/.artifacts` under that skill's naming convention, run its checker, and serve it from its
+index. The fetched `queue.json` stays in the temp directory; only the report becomes an artifact.
 
 ```bash
-out="${TMPDIR:-/tmp}/temp_assignments"
-mkdir -p "$out"
-report="$out/pr-assignments-$(date +%Y%m%d-%H%M%S).html"
+mkdir -p ~/.artifacts
+report="$HOME/.artifacts/pr-assignments-$(date +%Y%m%d-%H%M%S).html"
 ```
 
-Write the document there, then open it:
+Write the document there, then check, serve, and open it with the `generate-artifact` scripts:
 
 ```bash
-open "$report"        # macOS
-xdg-open "$report"    # Linux
-start "" "$report"    # Windows
+python3 <generate-artifact-dir>/scripts/check_artifact.py "$report"
+python3 <generate-artifact-dir>/scripts/serve.py --open
 ```
+
+If the `generate-artifact` skill is not installed, say so, write the file under
+`${TMPDIR:-/tmp}/temp_assignments` instead, and open it directly with `open`, `xdg-open`, or
+`start`.
 
 Then summarize in chat in **four lines at most**: the counts split direct vs. team and how many are
-overdue, the single PR to open first, anything the window or the fetch excluded, and the file path. Everything else is in the
-report — do not restate it.
+overdue, the single PR to open first, anything the window or the fetch excluded, and the artifact
+path with its served URL. Everything else is in the report — do not restate it.
 
 Finally, confirm explicitly that nothing was written to any PR.
 

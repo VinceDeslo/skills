@@ -1,7 +1,7 @@
 ---
 name: pr-digest
-description: Review a pull request from its link in a series of focused passes, verify every claim against the code, and emit a short HTML digest — at most five major, five minor, and five nit items — into a reboot-cleared temp_reviews directory. Runs entirely in the current session and never writes back to the PR. Use when given a PR or merge request URL and asked to review, assess, sanity-check, or get up to speed on it, or when the user says "pr-digest".
-compatibility: Requires `git`, the GitHub CLI (`gh`) authenticated against the PR's host, and network access. Optional — a local clone of the repository for deeper context, and a browser opener (`open`, `xdg-open`, or `start`) to display the digest.
+description: Review a pull request from its link in a series of focused passes, verify every claim against the code, and emit a short HTML digest — at most five major, five minor, and five nit items — as an artifact through the generate-artifact skill. Runs entirely in the current session and never writes back to the PR. Use when given a PR or merge request URL and asked to review, assess, sanity-check, or get up to speed on it, or when the user says "pr-digest".
+compatibility: Requires `git`, the GitHub CLI (`gh`) authenticated against the PR's host, and network access. Optional — a local clone of the repository for deeper context, and a browser opener (`open`, `xdg-open`, or `start`) to display the digest. Delivery uses the `generate-artifact` skill.
 ---
 
 # pr-digest
@@ -199,6 +199,9 @@ finding collapsed by default so the front page stays a digest.
 Fill the tokens, repeat the `.finding` block per finding, and repeat the file row per notable file.
 Rules:
 
+- **`DESCRIPTION`** is one sentence for the `<meta name="description">`: the PR title, its repo and
+  number, and the verdict. The artifact index is built from the title and this tag, so it is the
+  digest's card.
 - **Delete, never leave.** Any token you cannot fill goes, along with the element around it. A
   visible `{{TOKEN}}` in the output is a bug. The diagram block ships with one pattern filled in as
   an example — replace both panels wholesale with your own markup, or delete the figure.
@@ -228,25 +231,27 @@ Rules:
 
 ### 8. Deliver
 
-Write into a reviews directory under the system temp root, which the OS clears on reboot — reports
-stay readable for as long as the machine is up and never accumulate:
+Deliver the digest as an artifact with the `generate-artifact` skill: save the document unchanged
+into `~/.artifacts` under that skill's naming convention, run its checker, and serve it from its
+index:
 
 ```bash
-reviews="${TMPDIR:-/tmp}/temp_reviews"
-mkdir -p "$reviews"
-out="$reviews/<repo>-<number>-$(date +%Y%m%d-%H%M%S).html"
+mkdir -p ~/.artifacts
+out="$HOME/.artifacts/pr-digest-<repo>-<number>-$(date +%Y%m%d-%H%M%S).html"
 ```
 
-Write the document there, then open it:
+Write the document there, then check, serve, and open it with the `generate-artifact` scripts:
 
 ```bash
-open "$out"        # macOS
-xdg-open "$out"    # Linux
-start "" "$out"    # Windows
+python3 <generate-artifact-dir>/scripts/check_artifact.py "$out"
+python3 <generate-artifact-dir>/scripts/serve.py --open
 ```
+
+If the `generate-artifact` skill is not installed, say so, write the file under
+`${TMPDIR:-/tmp}/temp_reviews` instead, and open it directly with `open`, `xdg-open`, or `start`.
 
 Then summarize in chat in **four lines at most**: risk score, the counts, the single most important
-finding, and the file path. Everything else is in the digest — do not restate it.
+finding, and the artifact path with its served URL. Everything else is in the digest — do not restate it.
 
 Finally, confirm explicitly that nothing was written to the PR.
 
