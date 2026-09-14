@@ -34,8 +34,8 @@ INDEX_TEMPLATE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Artifacts</title>
 <style>
-:root { color-scheme: light dark; --bg:#f7f7f5; --fg:#1c1c1a; --muted:#6b6b66; --card:#ffffff; --line:#e3e3df; --accent:#2f6fed; }
-@media (prefers-color-scheme: dark) { :root { --bg:#151515; --fg:#ececea; --muted:#9a9a94; --card:#1e1e1e; --line:#2c2c2c; --accent:#7aa2ff; } }
+:root { color-scheme: light dark; --bg:#f2f5f6; --fg:#23282e; --muted:#6b747d; --card:#ffffff; --line:#d7dde1; --accent:#2f8b86; --accent-strong:#1f6f6b; --accent-soft:#9ccfcb; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1c1f26; --fg:#d9dee4; --muted:#7f8791; --card:#232730; --line:#30353f; --accent:#7cc4bf; --accent-strong:#a3dcd7; --accent-soft:#4f8a88; } }
 * { box-sizing:border-box; }
 body { margin:0; padding:2rem 1rem 4rem; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
 main { max-width:56rem; margin:0 auto; }
@@ -43,10 +43,12 @@ h1 { font-size:1.5rem; margin:0 0 .25rem; }
 .meta { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
 .meta code { font:inherit; }
 input[type=search] { width:100%; padding:.6rem .8rem; border:1px solid var(--line); border-radius:.5rem; background:var(--card); color:var(--fg); font:inherit; margin-bottom:1rem; }
+input[type=search]:focus { outline:none; border-color:var(--accent); }
 ul { list-style:none; margin:0; padding:0; display:grid; gap:.6rem; }
 li { background:var(--card); border:1px solid var(--line); border-radius:.6rem; padding:.8rem 1rem; }
 li a { color:var(--accent); font-weight:600; text-decoration:none; font-size:1.05rem; }
-li a:hover { text-decoration:underline; }
+li a:hover { text-decoration:underline; color:var(--accent-strong); }
+li:hover { border-color:var(--accent-soft); }
 li p { margin:.2rem 0 .3rem; }
 li small { color:var(--muted); font-size:.8rem; }
 li small code { font:inherit; }

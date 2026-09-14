@@ -77,6 +77,13 @@ Rules for the markup:
 - No `<script src>`, `<link href>`, `<img src>`, `@import`, or `url()` pointing at a network host.
   Embed images as `data:` URIs if they are essential; otherwise leave them out.
 - Keep the file under 16 MB. Move bulk data into a compact inline table rather than a dump.
+- **Two-tone palette: turquoise and grey only.** Every colour on the page comes from the template
+  tokens. `--accent`, `--accent-strong`, and `--accent-soft` are shades of turquoise; `--fg`,
+  `--muted`, `--line`, `--card`, and `--bg` are shades of grey. Status is expressed by intensity,
+  not hue: `--ok` is full turquoise, `--warn` is dim turquoise, `--bad` is grey. Do not introduce
+  red, green, amber, blue, or any other hue — not in badges, tables, charts, or inline SVG. Diagrams
+  use `var(--accent)` for strokes and `var(--accent-soft)` for fills; series in a chart differ by
+  turquoise shade or by grey, never by a new hue.
 - Text and controls must stay readable at a 400px wide viewport; the template CSS handles this if
   layout stays in the provided classes.
 
