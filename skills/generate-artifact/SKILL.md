@@ -137,8 +137,12 @@ important finding on the page. Everything else is on the page.
 
 - **Subject already has an artifact:** list matching slugs in `~/.artifacts` and say so. Create a
   new timestamped file unless the user asked to update the existing one.
-- **Port in use by something else:** the script treats an open port as an already running server.
-  Confirm with `--status`; if the pid is missing, pass a different `--port`.
+- **Port in use by something else:** every response carries an `X-Artifacts-Dir` header, so the
+  script starts only when the port is free or already serves the same directory. A port held by
+  another server — including an older run pointed at a different directory — fails with a message
+  naming that directory. Stop it (`kill $(lsof -ti tcp:8642)`) or rerun with `--port`. A stale page
+  in the browser is almost always such a server: check `--status` before assuming the index code is
+  wrong.
 - **Directory holds non-artifact HTML** (a saved web page, a template): the index lists any
   `*.html` except `index.html` and files in dot-directories. Move stray files into a dot-directory
   such as `~/.artifacts/.archive/` to hide them.

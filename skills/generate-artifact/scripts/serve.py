@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import html
+import http.client
 import http.server
 import json
 import os
@@ -18,6 +19,7 @@ from pathlib import Path
 DEFAULT_DIR = Path.home() / ".artifacts"
 DEFAULT_PORT = 8642
 PID_FILE_NAME = ".serve.pid"
+SERVED_DIR_HEADER = "X-Artifacts-Dir"
 HEAD_SCAN_BYTES = 16384
 TITLE_PATTERN = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 DESCRIPTION_PATTERN = re.compile(
@@ -169,6 +171,7 @@ def make_handler(directory):
 
         def end_headers(self):
             self.send_header("Cache-Control", "no-store")
+            self.send_header(SERVED_DIR_HEADER, str(directory))
             super().end_headers()
 
         def do_GET(self):
@@ -202,6 +205,18 @@ def port_is_open(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.settimeout(0.3)
         return probe.connect_ex(("127.0.0.1", port)) == 0
+
+
+def directory_served_on_port(port):
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
+        connection.request("HEAD", "/")
+        response = connection.getresponse()
+        served = response.getheader(SERVED_DIR_HEADER)
+        connection.close()
+        return served
+    except OSError:
+        return None
 
 
 def read_pid(pid_file):
@@ -284,9 +299,18 @@ def stop_server(directory):
 
 def status(directory, port):
     pid = read_pid(directory / PID_FILE_NAME)
-    running = pid_is_alive(pid) and port_is_open(port)
-    print(f"{'running' if running else 'stopped'} dir={directory} port={port} pid={pid or '-'}")
-    return 0 if running else 1
+    served = directory_served_on_port(port)
+    if served == str(directory):
+        print(f"running dir={directory} port={port} pid={pid or '-'}")
+        return 0
+    if served is not None:
+        print(f"stopped dir={directory}; port {port} serves {served} instead")
+        return 1
+    if port_is_open(port):
+        print(f"stopped dir={directory}; port {port} is held by another program")
+        return 1
+    print(f"stopped dir={directory} port={port}")
+    return 1
 
 
 def main():
@@ -318,8 +342,19 @@ def main():
         serve_foreground(directory, args.port)
         return 0
 
-    if port_is_open(args.port):
+    served = directory_served_on_port(args.port) if port_is_open(args.port) else None
+    if served == str(directory):
         print(f"already serving at {url}")
+    elif served is not None:
+        print(
+            f"port {args.port} already serves {served}, not {directory}; "
+            f"stop that server or rerun with --port",
+            file=sys.stderr,
+        )
+        return 1
+    elif port_is_open(args.port):
+        print(f"port {args.port} is held by another program; rerun with --port", file=sys.stderr)
+        return 1
     elif start_background(directory, args.port):
         print(f"serving {directory} at {url}")
     else:
