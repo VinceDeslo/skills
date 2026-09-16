@@ -269,7 +269,11 @@ def stop_server(directory):
         pid_file.unlink(missing_ok=True)
         print("not running")
         return 0
-    os.kill(pid, signal.SIGTERM)
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except PermissionError:
+        print(f"cannot signal pid {pid}; stop it from a shell: kill {pid}", file=sys.stderr)
+        return 1
     deadline = time.time() + 5
     while time.time() < deadline and pid_is_alive(pid):
         time.sleep(0.1)
