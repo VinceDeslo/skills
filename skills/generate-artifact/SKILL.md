@@ -63,6 +63,8 @@ both light and dark themes. Fill the head first:
   of a long list.
 - `<meta name="description">` — one sentence stating what the page shows and for what scope
   (repository, date range, version).
+- `<link rel="icon">` — keep the template line as it is. It is an inline SVG data URI, so the tab
+  carries a turquoise node-graph mark with no image file and no request. Change the glyph only when asked.
 
 Then the body:
 
@@ -78,7 +80,7 @@ Rules for the markup:
   Embed images as `data:` URIs if they are essential; otherwise leave them out.
 - Keep the file under 16 MB. Move bulk data into a compact inline table rather than a dump.
 - **Two-tone palette: turquoise and grey only.** Every colour on the page comes from the template
-  tokens. `--accent`, `--accent-strong`, and `--accent-soft` are shades of turquoise; `--fg`,
+  tokens, except the favicon mark, which keeps its own turquoise. `--accent`, `--accent-strong`, and `--accent-soft` are shades of turquoise; `--fg`,
   `--muted`, `--line`, `--card`, and `--bg` are shades of grey. Status is expressed by intensity,
   not hue: `--ok` is full turquoise, `--warn` is dim turquoise, `--bad` is grey. Do not introduce
   red, green, amber, blue, or any other hue — not in badges, tables, charts, or inline SVG. Diagrams
@@ -106,7 +108,9 @@ The server binds `127.0.0.1:8642`, detaches into the background, and writes its 
 `~/.artifacts/.serve.pid`. Running the command again while it is up prints the URL and does
 nothing else. The index at `/` is generated on every request by scanning `~/.artifacts` for
 `*.html`, newest first, so a freshly saved artifact appears on the next reload with no extra step.
-`/index.json` returns the same listing as JSON.
+`/index.json` returns the same listing as JSON. The index page shows the same turquoise node-graph mark above its title and in its tab,
+also served inline from `/favicon.svg` (and `/favicon.ico`), so the server tab stands out from the
+artifact tabs.
 
 Other server commands:
 

@@ -21,6 +21,19 @@ DEFAULT_PORT = 8642
 PID_FILE_NAME = ".serve.pid"
 SERVED_DIR_HEADER = "X-Artifacts-Dir"
 HEAD_SCAN_BYTES = 16384
+FAVICON_SVG = (
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' "
+    "stroke='#28c3c5' stroke-width='1.7' stroke-linecap='round'>"
+    "<path d='M13.47 11.77 7.96 19.91M18.53 11.77 24.04 19.91M9.93 23.63h12.11'/>"
+    "<circle cx='16' cy='8.05' r='3.65'/>"
+    "<circle cx='5.43' cy='23.63' r='3.65'/>"
+    "<circle cx='26.54' cy='23.63' r='3.65'/>"
+    "<g fill='#28c3c5' stroke='none'>"
+    "<circle cx='16' cy='8.05' r='1.1'/>"
+    "<circle cx='5.43' cy='23.63' r='1.1'/>"
+    "<circle cx='26.54' cy='23.63' r='1.1'/>"
+    "</g></svg>"
+)
 TITLE_PATTERN = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 DESCRIPTION_PATTERN = re.compile(
     r"<meta\s+[^>]*name=[\"']description[\"'][^>]*content=[\"'](.*?)[\"']", re.IGNORECASE | re.DOTALL
@@ -35,6 +48,7 @@ INDEX_TEMPLATE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Artifacts</title>
+<link rel="icon" type="image/svg+xml" href="@@FAVICON@@">
 <style>
 :root { color-scheme: light dark; --bg:#f2f5f6; --fg:#23282e; --muted:#6b747d; --card:#ffffff; --line:#d7dde1; --accent:#2f8b86; --accent-strong:#1f6f6b; --accent-soft:#9ccfcb; }
 @media (prefers-color-scheme: dark) { :root { --bg:#1c1f26; --fg:#d9dee4; --muted:#7f8791; --card:#232730; --line:#30353f; --accent:#7cc4bf; --accent-strong:#a3dcd7; --accent-soft:#4f8a88; } }
@@ -42,6 +56,7 @@ INDEX_TEMPLATE = """<!doctype html>
 body { margin:0; padding:2rem 1rem 4rem; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
 main { max-width:56rem; margin:0 auto; }
 h1 { font-size:1.5rem; margin:0 0 .25rem; }
+.mark { display:block; width:2.25rem; height:2.25rem; margin:0 0 .6rem; }
 .meta { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
 .meta code { font:inherit; }
 input[type=search] { width:100%; padding:.6rem .8rem; border:1px solid var(--line); border-radius:.5rem; background:var(--card); color:var(--fg); font:inherit; margin-bottom:1rem; }
@@ -59,6 +74,7 @@ li small code { font:inherit; }
 </head>
 <body>
 <main>
+@@MARK@@
 <h1>Artifacts</h1>
 <p class="meta"><code>@@DIRECTORY@@</code> · @@COUNT@@ file(s) · generated @@GENERATED@@</p>
 <input type="search" id="filter" placeholder="Filter by title, description, or file name" autofocus>
@@ -141,6 +157,14 @@ def collect_artifacts(directory):
     return artifacts
 
 
+def inline_mark():
+    return FAVICON_SVG.replace("<svg ", "<svg class='mark' ", 1)
+
+
+def favicon_data_uri():
+    return "data:image/svg+xml," + urllib.parse.quote(FAVICON_SVG, safe="")
+
+
 def render_index(directory, artifacts):
     items = []
     for entry in artifacts:
@@ -160,6 +184,8 @@ def render_index(directory, artifacts):
         INDEX_TEMPLATE.replace("@@DIRECTORY@@", html.escape(str(directory)))
         .replace("@@COUNT@@", str(len(artifacts)))
         .replace("@@GENERATED@@", datetime.now().isoformat(timespec="seconds").replace("T", " "))
+        .replace("@@MARK@@", inline_mark())
+        .replace("@@FAVICON@@", html.escape(favicon_data_uri(), quote=True))
         .replace("@@ITEMS@@", "\n".join(items))
     )
 
@@ -180,6 +206,14 @@ def make_handler(directory):
                 body = render_index(directory, collect_artifacts(directory)).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if route in ("/favicon.ico", "/favicon.svg"):
+                body = FAVICON_SVG.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "image/svg+xml")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
