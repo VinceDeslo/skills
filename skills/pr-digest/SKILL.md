@@ -202,6 +202,8 @@ Rules:
 - **`DESCRIPTION`** is one sentence for the `<meta name="description">`: the PR title, its repo and
   number, and the verdict. The artifact index is built from the title and this tag, so it is the
   digest's card.
+- **Keep the back link.** The `.back-to-index` link to `http://127.0.0.1:8642/` returns to the
+  artifact index. Never delete it.
 - **Delete, never leave.** Any token you cannot fill goes, along with the element around it. A
   visible `{{TOKEN}}` in the output is a bug. The diagram block ships with one pattern filled in as
   an example — replace both panels wholesale with your own markup, or delete the figure.
