@@ -193,8 +193,9 @@ comparison that says nothing.
 ### 7. Render
 
 Start from [assets/review-template.html](assets/review-template.html). It is a complete document:
-theme-aware, fully self-contained — no scripts, fonts, or network requests of any kind — with every
-finding collapsed by default so the front page stays a digest.
+theme-aware, fully self-contained — no fonts or network requests of any kind, and one inline script
+that only powers the copy buttons — with every finding collapsed by default so the front page stays a
+digest.
 
 Fill the tokens, repeat the `.finding` block per finding, and repeat the file row per notable file.
 Rules:
@@ -228,6 +229,29 @@ Rules:
   titles and details, failures, fixes, the intent note, diagram labels, and captions. Prose names a
   thing; `<code>` shows it is a thing in the codebase. Do not wrap ordinary nouns: `<code>` around
   "the cache" or "the handler" is wrong, `<code>tenantCache</code>` is right.
+- **Every finding carries a PR comment.** `{{F_COMMENT_MD}}` fills the hidden `textarea.comment-md`
+  that the finding's **Copy comment** button copies. It is GitHub Markdown, ready to paste as a PR
+  review comment, in exactly this shape — the badge line, a blank line, then the finding as a
+  blockquote:
+
+  ```markdown
+  ![Static Badge](https://img.shields.io/badge/agent-gray?logo=claudecode) ![Static Badge](https://img.shields.io/badge/severity-<level>-<colour>?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgPiA8cGF0aCBkPSJtMjEuNzMgMTgtOC0xNGEyIDIgMCAwIDAtMy40OCAwbC04IDE0QTIgMiAwIDAgMCA0IDIxaDE2YTIgMiAwIDAgMCAxLjczLTMiIC8%2BIDxwYXRoIGQ9Ik0xMiA5djQiIC8%2BIDxwYXRoIGQ9Ik0xMiAxN2guMDEiIC8%2BIDwvc3ZnPiA%3D)
+
+  > <detail and fix as one short paragraph>
+  ```
+
+  Copy the badge line byte for byte; change only `severity-<level>-<colour>`:
+
+  | Finding | Badge segment |
+  | --- | --- |
+  | nit | `severity-low-green` |
+  | minor | `severity-medium-yellow` |
+  | major | `severity-high-orange` |
+  | major that is a security hole or data loss | `severity-critical-red` |
+
+  The blockquote states what is wrong and the fix, two to four sentences, with identifiers in
+  backticks instead of `<code>`. No trace, no `path:line` — the comment is posted on the line. Inside
+  the textarea, escape `<`, `>`, and `&` as entities; the button copies the decoded text.
 - Escape `<`, `>`, and `&` in every value taken from code or the diff, **then** wrap identifiers in
   `<code>` — escaping afterwards would turn your own tags into visible text.
 

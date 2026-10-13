@@ -271,6 +271,15 @@ table.fields tr.is-gone    td { color: var(--text-faint); }
 .legend .swatch.is-changed { border-color: var(--changed); background: var(--changed-tint); }
 .legend .swatch.is-gone    { border-color: var(--gone);    background: var(--gone-tint); border-style: dashed; }
 
+.copy-comment {
+  font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; cursor: pointer;
+  background: var(--surface); color: var(--text-dim); border: 1px solid var(--border-strong);
+}
+.copy-comment:hover { color: var(--accent); border-color: var(--accent); }
+.copy-comment.copied { color: var(--ok); border-color: var(--ok); }
+textarea.comment-md { display: none; }
+
 footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-faint); }
 </style>
 </head>
@@ -373,7 +382,9 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
       <span class="title">{{F_TITLE}}</span>
       <span class="loc">{{F_LOCATION}}</span>
       <span class="badge {{F_VERDICT}}">{{F_VERDICT}}</span>
+      <button type="button" class="copy-comment">Copy comment</button>
     </summary>
+    <textarea class="comment-md" readonly>{{F_COMMENT_MD}}</textarea>
     <div class="body">
       <p>{{F_DETAIL}}</p>
       <!-- call stack: entry point first, one frame per layer, the finding site marked .hit.
@@ -405,7 +416,9 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
       <span class="title">{{F_TITLE}}</span>
       <span class="loc">{{F_LOCATION}}</span>
       <span class="badge {{F_VERDICT}}">{{F_VERDICT}}</span>
+      <button type="button" class="copy-comment">Copy comment</button>
     </summary>
+    <textarea class="comment-md" readonly>{{F_COMMENT_MD}}</textarea>
     <div class="body">
       <p>{{F_DETAIL}}</p>
       <!-- call stack: entry point first, one frame per layer, the finding site marked .hit.
@@ -435,7 +448,9 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
     <summary>
       <span class="title">{{F_TITLE}}</span>
       <span class="loc">{{F_LOCATION}}</span>
+      <button type="button" class="copy-comment">Copy comment</button>
     </summary>
+    <textarea class="comment-md" readonly>{{F_COMMENT_MD}}</textarea>
     <div class="body">
       <p>{{F_DETAIL}}</p>
     </div>
@@ -481,6 +496,36 @@ footer { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--border
   cleared on reboot</footer>
 
 </div>
+
+<script>
+document.addEventListener("click", function (event) {
+  var button = event.target.closest(".copy-comment");
+  if (!button) return;
+  event.preventDefault();
+  var commentMarkdown = button.closest(".finding").querySelector("textarea.comment-md").value;
+  function markCopied() {
+    button.textContent = "Copied";
+    button.classList.add("copied");
+    setTimeout(function () { button.textContent = "Copy comment"; button.classList.remove("copied"); }, 1500);
+  }
+  function copyWithSelection() {
+    var scratch = document.createElement("textarea");
+    scratch.value = commentMarkdown;
+    scratch.style.position = "fixed";
+    scratch.style.opacity = "0";
+    document.body.appendChild(scratch);
+    scratch.select();
+    document.execCommand("copy");
+    scratch.remove();
+    markCopied();
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(commentMarkdown).then(markCopied, copyWithSelection);
+  } else {
+    copyWithSelection();
+  }
+});
+</script>
 
 </body>
 </html>
