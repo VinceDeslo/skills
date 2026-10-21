@@ -231,13 +231,17 @@ Rules:
   "the cache" or "the handler" is wrong, `<code>tenantCache</code>` is right.
 - **Every finding carries a PR comment.** `{{F_COMMENT_MD}}` fills the hidden `textarea.comment-md`
   that the finding's **Copy comment** button copies. It is GitHub Markdown, ready to paste as a PR
-  review comment, in exactly this shape — the badge line, a blank line, then the finding as a
-  blockquote:
+  review comment, in exactly this shape — the badge line, a blank line, the finding as a
+  blockquote, then a `Proposed fix:` line and the fix as a second blockquote:
 
   ```markdown
   ![Static Badge](https://img.shields.io/badge/agent-gray?logo=claudecode) ![Static Badge](https://img.shields.io/badge/severity-<level>-<colour>?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgPiA8cGF0aCBkPSJtMjEuNzMgMTgtOC0xNGEyIDIgMCAwIDAtMy40OCAwbC04IDE0QTIgMiAwIDAgMCA0IDIxaDE2YTIgMiAwIDAgMCAxLjczLTMiIC8%2BIDxwYXRoIGQ9Ik0xMiA5djQiIC8%2BIDxwYXRoIGQ9Ik0xMiAxN2guMDEiIC8%2BIDwvc3ZnPiA%3D)
 
-  > <detail and fix as one short paragraph>
+  > <what is wrong and why it matters, one short paragraph>
+
+  Proposed fix:
+
+  > <the fix, one short paragraph>
   ```
 
   Copy the badge line byte for byte; change only `severity-<level>-<colour>`:
@@ -249,9 +253,10 @@ Rules:
   | major | `severity-high-orange` |
   | major that is a security hole or data loss | `severity-critical-red` |
 
-  The blockquote states what is wrong and the fix, two to four sentences, with identifiers in
-  backticks instead of `<code>`. No trace, no `path:line` — the comment is posted on the line. Inside
-  the textarea, escape `<`, `>`, and `&` as entities; the button copies the decoded text.
+  The first blockquote states what is wrong, two to four sentences. The `Proposed fix:` section is
+  required on every comment, nits included; its blockquote states the fix in one to three
+  sentences. Use backticks for identifiers instead of `<code>`. No trace, no `path:line` — the
+  comment is posted on the line. Inside the textarea, escape `<`, `>`, and `&` as entities; the button copies the decoded text.
 - Escape `<`, `>`, and `&` in every value taken from code or the diff, **then** wrap identifiers in
   `<code>` — escaping afterwards would turn your own tags into visible text.
 
