@@ -47,6 +47,7 @@ remote_repos=$(gh repo list "$org" --no-archived --limit 1000 --json name --jq '
 [ -n "$remote_repos" ] || { echo "no non-archived repositories found for $org" >&2; exit 1; }
 
 local_repos=$(
+    shopt -s dotglob nullglob
     for candidate in "$root"/*/; do
         [ -d "$candidate" ] || continue
         git -C "$candidate" remote get-url origin 2>/dev/null
