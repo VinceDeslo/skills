@@ -1,6 +1,6 @@
 ---
 name: pr-digest
-description: Review a pull request from its link in a series of focused passes, verify every claim against the code, and emit a short HTML digest — at most five major, five minor, and five nit items — as an artifact through the generate-artifact skill. Runs entirely in the current session and never writes back to the PR. Use when given a PR or merge request URL and asked to review, assess, sanity-check, or get up to speed on it, or when the user says "pr-digest".
+description: Review a pull request from its link in a series of focused passes, verify every claim against the code, post the findings as a pending (draft) GitHub review in the user's name, and emit a short HTML digest — at most five major, five minor, and five nit items, each linked to its draft comment — as an artifact through the generate-artifact skill. Never submits the review, so nothing is visible to others until the user triages and submits it. Use when given a PR or merge request URL and asked to review, assess, sanity-check, or get up to speed on it, or when the user says "pr-digest".
 compatibility: Requires `git`, the GitHub CLI (`gh`) authenticated against the PR's host, and network access. Optional — a local clone of the repository for deeper context, and a browser opener (`open`, `xdg-open`, or `start`) to display the digest. Delivery uses the `generate-artifact` skill.
 ---
 
@@ -14,9 +14,10 @@ Three properties define this skill:
 - **In-session.** You do the whole review yourself. No subagents, no delegation, no parallel
   reviewers. The passes below are stages of your own reading, and they run in order because each
   one depends on what the previous one established.
-- **Read-only.** The review never touches the PR — no comments, no reviews, no labels, no
-  description edits, no merges — and never modifies the working tree. The output is a local file
-  and a chat summary. Nothing else.
+- **Draft-only writes.** The one write to the PR is a single **pending** review holding one draft
+  comment per finding. A pending review is visible only to its author until submitted. Never
+  submit it, never set an `event`, never post standalone comments, labels, description edits, or
+  merges, and never modify the working tree. The user triages the drafts and submits.
 - **Ruthlessly short.** At most five major, five minor, and five nit findings. The goal is to catch
   the biggest faults, not to block progress. A tidy PR with nothing worth saying gets an empty
   report, and that is a success.
@@ -190,7 +191,46 @@ If the change is not structural (a bug fix in one function, a dependency bump, a
 gets no figure. Delete the `<figure class="card diagram">` block entirely rather than shipping a
 comparison that says nothing.
 
-### 7. Render
+### 7. Post the draft review
+
+Post every finding — majors, minors, and nits — as one pending review. Each comment body is the
+finding's `{{F_COMMENT_MD}}` Markdown (decoded, not entity-escaped).
+
+First check for an existing pending review by the user; GitHub allows one per PR per user, and
+creating a second fails:
+
+```bash
+me=$(gh api user --jq .login)
+gh api "repos/<owner>/<repo>/pulls/<n>/reviews" --paginate \
+  --jq ".[] | select(.state == \"PENDING\" and .user.login == \"$me\") | .id"
+```
+
+If one exists, do not touch it. Skip posting, render without draft links, and tell the user to
+submit or discard their existing pending review and re-run.
+
+Anchor each comment on the PR head (`commit_id` = `headRefOid`), `side: "RIGHT"`, at the
+finding's `.loc` line; use `side: "LEFT"` for a removed line, and `start_line` plus `line` for a
+multi-line range. GitHub rejects lines outside the diff hunks: if the `.loc` line is outside the
+diff, anchor on the changed line in the same file that causes the fault; if no such line exists,
+use `"subject_type": "file"` with no `line`. Omit `event` and `body` entirely — that is what keeps
+the review pending.
+
+```bash
+# $WORK/review.json: {"commit_id": "<headRefOid>", "comments": [{"path": "...", "line": 142, "side": "RIGHT", "body": "..."}, ...]}
+review_id=$(gh api -X POST "repos/<owner>/<repo>/pulls/<n>/reviews" --input "$WORK/review.json" --jq .id)
+gh api "repos/<owner>/<repo>/pulls/<n>/reviews/$review_id/comments" --paginate \
+  --jq '.[] | {path, line, body, html_url}'
+```
+
+Build `review.json` with `jq` or a script, never by hand-escaping Markdown into a shell string.
+Match each returned comment to its finding by `body`, and take its `html_url` as
+`{{F_DRAFT_URL}}`.
+
+If the POST fails (no write access, a rejected anchor, an outage), retry once after fixing a
+rejected anchor; otherwise render without draft links, delete the `.draft-link` elements, and say
+why in the methodology note and the chat summary. The **Copy comment** button stays as the fallback.
+
+### 8. Render
 
 Start from [assets/review-template.html](assets/review-template.html). It is a complete document:
 theme-aware, fully self-contained — no fonts or network requests of any kind, and one inline script
@@ -229,6 +269,8 @@ Rules:
   titles and details, failures, fixes, the intent note, diagram labels, and captions. Prose names a
   thing; `<code>` shows it is a thing in the codebase. Do not wrap ordinary nouns: `<code>` around
   "the cache" or "the handler" is wrong, `<code>tenantCache</code>` is right.
+- **Every finding links its draft.** `{{F_DRAFT_URL}}` is the `html_url` of the finding's draft
+  comment from step 7. If posting failed, delete the `.draft-link` element.
 - **Every finding carries a PR comment.** `{{F_COMMENT_MD}}` fills the hidden `textarea.comment-md`
   that the finding's **Copy comment** button copies. It is GitHub Markdown, ready to paste as a PR
   review comment, in exactly this shape — the badge line, a blank line, the finding as a
@@ -260,7 +302,7 @@ Rules:
 - Escape `<`, `>`, and `&` in every value taken from code or the diff, **then** wrap identifiers in
   `<code>` — escaping afterwards would turn your own tags into visible text.
 
-### 8. Deliver
+### 9. Deliver
 
 Deliver the digest as an artifact with the `generate-artifact` skill: save the document unchanged
 into `~/.artifacts` under that skill's naming convention, run its checker, and serve it from its
@@ -281,10 +323,11 @@ python3 <generate-artifact-dir>/scripts/serve.py --open
 If the `generate-artifact` skill is not installed, say so, write the file under
 `${TMPDIR:-/tmp}/temp_reviews` instead, and open it directly with `open`, `xdg-open`, or `start`.
 
-Then summarize in chat in **four lines at most**: risk score, the counts, the single most important
-finding, and the artifact path with its served URL. Everything else is in the digest — do not restate it.
+Then summarize in chat in **five lines at most**: risk score, the counts, the single most important
+finding, the artifact path with its served URL, and the pending review state — how many draft
+comments were posted, or why none were. Everything else is in the digest — do not restate it.
 
-Finally, confirm explicitly that nothing was written to the PR.
+State explicitly that the review is pending and was not submitted.
 
 ## Edge cases
 
@@ -300,7 +343,9 @@ Finally, confirm explicitly that nothing was written to the PR.
   unverifiable candidates `likely`, and say in the methodology note that the review was diff-only.
 - **Nothing found:** ship the digest anyway. The summary, before / after figure, and file table are
   worth the read on their own, and a verified "nothing found" is information.
-- **The PR is the user's own and they ask for it to be posted:** this skill does not post. Say so
-  and point at the agent's PR-comment tooling; do not improvise a write.
+- **The user asks to submit the review:** this skill does not submit. The user submits from the
+  GitHub UI after triage.
+- **The PR is the user's own:** GitHub accepts a pending review on your own PR; post it as usual.
+- **Merged or closed PR:** do not post a draft review; render without draft links.
 - **Non-GitHub host** (GitLab, Bitbucket): `gh` cannot fetch it. Stop and say what is needed rather
   than guessing at an equivalent CLI.
